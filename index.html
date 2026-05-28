@@ -1252,7 +1252,14 @@ async function enterTrainerMode(options = {}) {
   if (!result.success) {
     clearTrainerSession();
     if (!options.quiet) {
-      showToast('❌', 'Sign-in required', result.message || 'Please sign in again.', 'warning');
+      const tried = options.loginEmail || result.email || '';
+      const isAuthError = (result.message || '').toLowerCase().indexOf('not authorized') !== -1;
+      showToast(
+        '❌',
+        isAuthError ? 'Access Denied' : 'Sign-in required',
+        result.message || (tried ? tried + ' is not on the trainer allowlist.' : 'Please sign in again.'),
+        isAuthError ? 'error' : 'warning'
+      );
     }
     return false;
   }
@@ -1332,10 +1339,7 @@ async function handleGoogleCredentialResponse(response) {
   localStorage.setItem('twm_trainer_credential', trainerCredential);
   localStorage.setItem('twm_trainer_credential_exp', String(payload.exp));
 
-  const ok = await enterTrainerMode({ quiet: false });
-  if (!ok) {
-    showToast('❌', 'Access Denied', 'This Google account is not authorized.', 'error');
-  }
+  await enterTrainerMode({ quiet: false, loginEmail: payload.email });
 }
 
 function trainerLogout() {
