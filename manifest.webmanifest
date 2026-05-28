@@ -1,0 +1,32 @@
+{
+  "name": "Trainer AA — Book a Session",
+  "short_name": "Trainer AA",
+  "description": "Book training sessions with Trainer AA",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0a0a0a",
+  "theme_color": "#0a0a0a",
+  "lang": "en",
+  "icons": [
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

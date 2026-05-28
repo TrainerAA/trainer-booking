@@ -2,8 +2,17 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0a0a0a">
+<meta name="description" content="Book training sessions with Trainer AA">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Trainer AA">
 <title>Trainer AA — Book a Training Session</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/icon-512.png">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>
@@ -1843,7 +1852,23 @@ function showToast(icon, title, msg, type='success') {
 // ══════════════════════════════════════════════════
 //  INIT
 // ══════════════════════════════════════════════════
+function registerServiceWorker() {
+  if (!('serviceWorker' in navigator)) return;
+  const base = (() => {
+    const path = window.location.pathname;
+    if (path.endsWith('/index.html')) return path.slice(0, -10) + '/';
+    if (path.endsWith('/')) return path;
+    const last = path.lastIndexOf('/');
+    return last >= 0 ? path.slice(0, last + 1) : '/';
+  })();
+  navigator.serviceWorker.register(base + 'sw.js', { scope: base }).catch((err) => {
+    console.warn('Service worker registration failed:', err);
+  });
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
+  registerServiceWorker();
+
   const today = new Date();
   const dateEl = document.getElementById('newSlotDate');
   const timeEl = document.getElementById('newSlotTime');
