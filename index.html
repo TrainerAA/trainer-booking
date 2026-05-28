@@ -1,0 +1,1507 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Trainer AA — Book a Training Session</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<style>
+  :root {
+    --black: #0a0a0a;
+    --dark: #111111;
+    --card: #181818;
+    --border: #2a2a2a;
+    --accent: #e8ff47;
+    --accent2: #ff4747;
+    --text: #f0f0f0;
+    --muted: #666;
+    --success: #47ffb8;
+    --pending: #ffaa00;
+    --pending-dim: rgba(255,170,0,0.15);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--black);
+    color: var(--text);
+    font-family: 'Sarabun', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ─── NAV ─── */
+  nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.2rem 2rem;
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    background: rgba(10,10,10,0.95);
+    backdrop-filter: blur(12px);
+    z-index: 100;
+  }
+
+  .logo {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.8rem;
+    letter-spacing: 2px;
+    color: var(--accent);
+  }
+
+  .logo span { color: var(--text); }
+
+  nav .nav-actions { display: flex; gap: 1rem; align-items: center; }
+
+  .btn {
+    padding: 0.5rem 1.2rem;
+    border-radius: 6px;
+    font-family: 'Sarabun', sans-serif;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    transition: all 0.2s;
+  }
+
+  .btn-ghost {
+    background: transparent;
+    color: var(--muted);
+    border: 1px solid var(--border);
+  }
+  .btn-ghost:hover { color: var(--text); border-color: var(--text); }
+
+  .btn-accent {
+    background: var(--accent);
+    color: var(--black);
+  }
+  .btn-accent:hover { background: #d4eb00; transform: translateY(-1px); }
+
+  .btn-danger {
+    background: var(--accent2);
+    color: white;
+  }
+  .btn-danger:hover { background: #cc3333; }
+
+  .btn-success {
+    background: var(--success);
+    color: var(--black);
+  }
+  .btn-success:hover { background: #2edb96; }
+
+  .btn-warning {
+    background: var(--pending);
+    color: var(--black);
+  }
+  .btn-warning:hover { background: #e69900; }
+
+  .btn-sm {
+    padding: 0.35rem 0.7rem;
+    font-size: 0.78rem;
+  }
+
+  /* ─── VIEWS ─── */
+  .view { display: none; }
+  .view.active { display: block; }
+
+  /* ─── HERO ─── */
+  .hero {
+    padding: 5rem 2rem 3rem;
+    max-width: 900px;
+    margin: 0 auto;
+    text-align: center;
+    animation: fadeUp 0.6s ease both;
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(24px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .hero-tag {
+    display: inline-block;
+    background: var(--accent);
+    color: var(--black);
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    padding: 0.3rem 0.8rem;
+    border-radius: 4px;
+    margin-bottom: 1.5rem;
+  }
+
+  .hero h1 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(3rem, 8vw, 6rem);
+    line-height: 1;
+    letter-spacing: 2px;
+    margin-bottom: 1rem;
+  }
+
+  .hero h1 em {
+    color: var(--accent);
+    font-style: normal;
+  }
+
+  .hero p {
+    color: var(--muted);
+    font-size: 1.1rem;
+    max-width: 500px;
+    margin: 0 auto 2.5rem;
+    line-height: 1.7;
+  }
+
+  /* ─── CALENDAR SECTION ─── */
+  .section {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 2rem;
+    animation: fadeUp 0.5s ease both;
+  }
+
+  .section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+
+  .section-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 2rem;
+    letter-spacing: 1px;
+  }
+
+  /* ─── WEEK NAV ─── */
+  .week-nav {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .week-nav button {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text);
+    cursor: pointer;
+    font-size: 1rem;
+    transition: all 0.2s;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .week-nav button:hover { border-color: var(--accent); color: var(--accent); }
+
+  .week-label { font-weight: 600; font-size: 0.95rem; color: var(--muted); }
+
+  /* ─── SCHEDULE GRID ─── */
+  .schedule-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 0.5rem;
+    margin-bottom: 2rem;
+  }
+
+  .day-col { display: flex; flex-direction: column; gap: 0.4rem; }
+
+  .day-header {
+    text-align: center;
+    padding: 0.6rem 0.3rem;
+    border-radius: 8px;
+    margin-bottom: 0.2rem;
+  }
+
+  .day-name {
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .day-date {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.6rem;
+    line-height: 1;
+  }
+
+  .day-header.today .day-date { color: var(--accent); }
+  .day-header.today .day-name { color: var(--accent); }
+
+  /* ─── SLOT ─── */
+  .slot {
+    border-radius: 8px;
+    padding: 0.5rem 0.4rem;
+    text-align: center;
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: default;
+    transition: all 0.2s;
+    border: 1px solid transparent;
+    position: relative;
+    min-height: 54px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+  }
+
+  .slot-time {
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+  }
+
+  .slot-label {
+    font-size: 0.65rem;
+    font-weight: 500;
+  }
+
+  .slot.available {
+    background: rgba(232,255,71,0.08);
+    border-color: rgba(232,255,71,0.25);
+    color: var(--accent);
+    cursor: pointer;
+  }
+  .slot.available:hover {
+    background: rgba(232,255,71,0.18);
+    border-color: var(--accent);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(232,255,71,0.15);
+  }
+
+  .slot.booked {
+    background: rgba(255,71,71,0.08);
+    border-color: rgba(255,71,71,0.2);
+    color: var(--accent2);
+    cursor: not-allowed;
+  }
+
+  .slot.my-booking {
+    background: rgba(71,255,184,0.1);
+    border-color: rgba(71,255,184,0.3);
+    color: var(--success);
+    cursor: pointer;
+  }
+
+  /* ─── PENDING SLOT (Neon orange/yellow cyberpunk style) ─── */
+  .slot.pending {
+    background: rgba(255,170,0,0.1);
+    border-color: rgba(255,170,0,0.35);
+    color: var(--pending);
+    cursor: pointer;
+    box-shadow: 0 0 8px rgba(255,170,0,0.08);
+  }
+  .slot.pending:hover {
+    background: rgba(255,170,0,0.2);
+    border-color: var(--pending);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 20px rgba(255,170,0,0.2);
+  }
+
+  /* trainer sees booked differently */
+  .slot.booked-trainer {
+    background: rgba(255,165,0,0.1);
+    border-color: rgba(255,165,0,0.3);
+    color: #ffaa00;
+    cursor: pointer;
+  }
+
+  /* trainer slot with client info (pending or booked) */
+  .slot.has-client {
+    cursor: pointer;
+  }
+
+  /* ─── LEGEND ─── */
+  .legend {
+    display: flex;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+    margin-bottom: 2rem;
+  }
+  .legend-item { display: flex; align-items: center; gap: 0.5rem; font-size: 0.82rem; color: var(--muted); }
+  .legend-dot { width: 10px; height: 10px; border-radius: 3px; }
+  .ld-available { background: var(--accent); }
+  .ld-pending { background: var(--pending); }
+  .ld-booked { background: var(--accent2); }
+  .ld-mine { background: var(--success); }
+
+  /* ─── MODAL ─── */
+  .modal-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.85);
+    backdrop-filter: blur(8px);
+    z-index: 200;
+    display: flex; align-items: center; justify-content: center;
+    padding: 1rem;
+    animation: fadeIn 0.2s ease;
+  }
+  .modal-overlay.hidden { display: none; }
+
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+  .modal {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 2rem;
+    max-width: 440px;
+    width: 100%;
+    animation: slideUp 0.3s ease;
+  }
+
+  @keyframes slideUp {
+    from { transform: translateY(20px); opacity: 0; }
+    to   { transform: translateY(0); opacity: 1; }
+  }
+
+  .modal h2 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.8rem;
+    margin-bottom: 0.3rem;
+    letter-spacing: 1px;
+  }
+
+  .modal .slot-info {
+    background: rgba(232,255,71,0.06);
+    border: 1px solid rgba(232,255,71,0.15);
+    border-radius: 10px;
+    padding: 1rem;
+    margin: 1.2rem 0;
+  }
+
+  .modal .slot-info p { font-size: 0.9rem; color: var(--muted); margin-bottom: 0.3rem; }
+  .modal .slot-info strong { color: var(--accent); font-size: 1.1rem; }
+
+  .form-group { margin-bottom: 1rem; }
+  .form-group label { display: block; font-size: 0.85rem; font-weight: 600; color: var(--muted); margin-bottom: 0.4rem; }
+  .form-group input, .form-group select, .form-group textarea {
+    width: 100%;
+    background: var(--dark);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.7rem 1rem;
+    color: var(--text);
+    font-family: 'Sarabun', sans-serif;
+    font-size: 0.95rem;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+    border-color: var(--accent);
+  }
+  .form-group textarea { resize: vertical; min-height: 80px; }
+
+  .modal-actions { display: flex; gap: 0.8rem; margin-top: 1.5rem; }
+  .modal-actions .btn { flex: 1; padding: 0.8rem; font-size: 0.95rem; border-radius: 8px; }
+
+  /* ─── TOAST ─── */
+  .toast {
+    position: fixed;
+    top: 80px; right: 1.5rem;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1rem 1.3rem;
+    max-width: 340px;
+    z-index: 300;
+    display: flex; align-items: flex-start; gap: 0.8rem;
+    animation: slideLeft 0.3s ease;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+  }
+  .toast.hidden { display: none; }
+
+  @keyframes slideLeft {
+    from { transform: translateX(60px); opacity: 0; }
+    to   { transform: translateX(0); opacity: 1; }
+  }
+
+  .toast-icon { font-size: 1.4rem; flex-shrink: 0; }
+  .toast-body p:first-child { font-weight: 700; font-size: 0.9rem; margin-bottom: 0.2rem; }
+  .toast-body p:last-child { font-size: 0.82rem; color: var(--muted); }
+
+  .toast.success { border-color: rgba(71,255,184,0.3); }
+  .toast.warning { border-color: rgba(255,170,0,0.3); }
+  .toast.info    { border-color: rgba(232,255,71,0.3); }
+  .toast.error   { border-color: rgba(255,71,71,0.4); }
+
+  /* ─── TRAINER PANEL ─── */
+  .trainer-header {
+    background: linear-gradient(135deg, #1a1a00 0%, #0a0a0a 100%);
+    border-bottom: 2px solid var(--accent);
+    padding: 0.6rem 2rem;
+    display: flex; align-items: center; gap: 0.8rem;
+    font-size: 0.85rem; font-weight: 700;
+    letter-spacing: 1px; text-transform: uppercase;
+  }
+
+  .trainer-badge {
+    background: var(--accent);
+    color: var(--black);
+    padding: 0.2rem 0.6rem;
+    border-radius: 4px;
+    font-size: 0.72rem;
+    font-weight: 800;
+  }
+
+  /* ─── BOOKING LIST (Trainer) ─── */
+  .bookings-list { display: flex; flex-direction: column; gap: 0.8rem; }
+
+  .booking-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1rem 1.3rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+    transition: border-color 0.2s;
+  }
+  .booking-card:hover { border-color: rgba(232,255,71,0.3); }
+
+  .booking-card .bk-time {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.3rem;
+    color: var(--accent);
+    letter-spacing: 1px;
+  }
+  .booking-card .bk-name { font-weight: 700; font-size: 1rem; }
+  .booking-card .bk-phone { font-size: 0.82rem; color: var(--muted); }
+  .booking-card .bk-note { font-size: 0.82rem; color: var(--muted); font-style: italic; }
+  .booking-card .bk-status {
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    padding: 0.15rem 0.5rem;
+    border-radius: 4px;
+  }
+  .bk-status-pending {
+    background: rgba(255,170,0,0.2);
+    color: var(--pending);
+  }
+  .bk-status-booked {
+    background: rgba(71,255,184,0.15);
+    color: var(--success);
+  }
+
+  .booking-card .bk-actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+
+  .booking-pending {
+    border-color: rgba(255,170,0,0.4) !important;
+  }
+  .new-badge {
+    background: var(--pending);
+    color: var(--black);
+    font-size: 0.65rem;
+    font-weight: 800;
+    padding: 0.15rem 0.5rem;
+    border-radius: 4px;
+    letter-spacing: 1px;
+  }
+
+  /* ─── ADD SLOT FORM ─── */
+  .add-slot-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr auto;
+    gap: 0.8rem;
+    align-items: end;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.3rem;
+    margin-bottom: 2rem;
+  }
+
+  /* ─── LOGIN ─── */
+  .login-wrap {
+    min-height: 100vh;
+    display: flex; align-items: center; justify-content: center;
+    padding: 2rem;
+  }
+
+  .login-box {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 2.5rem;
+    max-width: 380px;
+    width: 100%;
+    text-align: center;
+    animation: fadeUp 0.5s ease;
+  }
+
+  .login-box h2 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 2.2rem;
+    letter-spacing: 1px;
+    margin-bottom: 0.3rem;
+  }
+
+  .login-box p { color: var(--muted); font-size: 0.9rem; margin-bottom: 1.8rem; }
+
+  /* ─── LOADING ─── */
+  .loading-spinner {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    color: var(--muted);
+    font-size: 0.85rem;
+    padding: 2rem;
+  }
+  .spinner {
+    width: 20px; height: 20px;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* empty state */
+  .empty-state { text-align: center; padding: 3rem; color: var(--muted); }
+  .empty-state .icon { font-size: 3rem; margin-bottom: 1rem; }
+
+  /* tab */
+  .tabs { display: flex; gap: 0.5rem; margin-bottom: 2rem; }
+  .tab {
+    padding: 0.6rem 1.3rem;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    font-family: 'Sarabun', sans-serif;
+    font-weight: 600;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .tab.active { background: var(--accent); color: var(--black); border-color: var(--accent); }
+  .tab:not(.active):hover { border-color: var(--text); color: var(--text); }
+
+  @media (max-width: 640px) {
+    .schedule-grid { grid-template-columns: repeat(4, 1fr); }
+    .day-col:nth-child(n+5) { display: none; }
+    .add-slot-grid { grid-template-columns: 1fr; }
+    nav { padding: 1rem; }
+    .booking-card .bk-actions { width: 100%; justify-content: flex-end; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ════════ NAV ════════ -->
+<nav id="mainNav">
+  <div class="logo">TRAINER<span> AA</span></div>
+  <div class="nav-actions" id="navActions">
+    <button class="btn btn-ghost" onclick="showTrainerLogin()">🏋️ Trainer</button>
+    <button class="btn btn-accent" onclick="scrollToSchedule()">Book Session</button>
+  </div>
+</nav>
+
+<!-- ════════ CLIENT VIEW ════════ -->
+<div class="view active" id="clientView">
+  <div class="hero">
+    <span class="hero-tag">Trainer AA</span>
+    <h1>PUSH YOUR<br><em>LIMITS</em></h1>
+    <p>Pick your time and book a training session with Trainer AA. Easy, fast, no waiting.</p>
+    <button class="btn btn-accent" style="font-size:1rem;padding:0.8rem 2rem;" onclick="scrollToSchedule()">View Schedule →</button>
+  </div>
+
+  <div class="section" id="scheduleSection">
+    <div class="section-header">
+      <div class="section-title">Schedule</div>
+      <div class="week-nav">
+        <button onclick="prevWeek()">‹</button>
+        <span class="week-label" id="weekLabel"></span>
+        <button onclick="nextWeek()">›</button>
+      </div>
+    </div>
+
+    <div class="legend">
+      <div class="legend-item"><div class="legend-dot ld-available"></div> Available</div>
+      <div class="legend-item"><div class="legend-dot ld-pending"></div> Pending (Queue)</div>
+      <div class="legend-item"><div class="legend-dot ld-booked"></div> Booked</div>
+      <div class="legend-item"><div class="legend-dot ld-mine"></div> Your Booking</div>
+    </div>
+
+    <div class="schedule-grid" id="clientGrid"></div>
+  </div>
+</div>
+
+<!-- ════════ TRAINER VIEW ════════ -->
+<div class="view" id="trainerView">
+  <div class="trainer-header">
+    <span class="trainer-badge">TRAINER MODE</span>
+    <span>Trainer Dashboard</span>
+    <span style="margin-left:auto;color:var(--muted);font-weight:400" id="trainerGreeting">Hey, Trainer AA 👋</span>
+    <button class="btn btn-ghost" style="font-size:0.8rem;padding:0.3rem 0.8rem;" onclick="trainerLogout()">Logout</button>
+  </div>
+
+  <div class="section">
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('schedule', this)">📅 Schedule</button>
+      <button class="tab" onclick="switchTab('bookings', this)">📋 All Bookings</button>
+    </div>
+
+    <!-- SCHEDULE TAB -->
+    <div id="tab-schedule">
+      <!-- Add slot -->
+      <div style="margin-bottom:1.5rem;">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:1.4rem;letter-spacing:1px;margin-bottom:1rem;">
+          ➕ Add Available Slot
+        </div>
+        <div class="add-slot-grid">
+          <div class="form-group" style="margin:0">
+            <label>Date</label>
+            <input type="date" id="newSlotDate">
+          </div>
+          <div class="form-group" style="margin:0">
+            <label>Time</label>
+            <input type="time" id="newSlotTime">
+          </div>
+          <button class="btn btn-accent" onclick="addSlot()" style="padding:0.7rem 1.4rem;">Add</button>
+        </div>
+      </div>
+
+      <div class="section-header">
+        <div class="section-title">Your Schedule</div>
+        <div class="week-nav">
+          <button onclick="prevWeekT()">‹</button>
+          <span class="week-label" id="weekLabelT"></span>
+          <button onclick="nextWeekT()">›</button>
+        </div>
+      </div>
+
+      <div class="schedule-grid" id="trainerGrid"></div>
+    </div>
+
+    <!-- BOOKINGS TAB -->
+    <div id="tab-bookings" style="display:none">
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:1.4rem;letter-spacing:1px;margin-bottom:1.5rem;">
+        All Bookings & Requests
+      </div>
+      <div class="bookings-list" id="bookingsList"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════ TRAINER LOGIN ════════ -->
+<div class="view" id="trainerLoginView">
+  <div class="login-wrap">
+    <div class="login-box">
+      <div style="font-size:3rem;margin-bottom:1rem;">🏋️</div>
+      <h2>TRAINER LOGIN</h2>
+      <p>Sign in with your authorized Google account to manage schedule and bookings.</p>
+      <div id="googleSignInBtn" style="display:flex;justify-content:center;margin:1.25rem 0;min-height:44px;"></div>
+      <p id="googleSignInHint" style="font-size:0.78rem;color:var(--accent2);display:none;">ตั้งค่า GOOGLE_CLIENT_ID ใน index.html และอีเมลใน Code.gs ก่อนใช้งาน</p>
+      <button class="btn btn-ghost" style="width:100%;padding:0.7rem;font-size:0.9rem;margin-top:0.8rem;" onclick="showClientBooking()">← Back</button>
+      <p style="margin-top:1.2rem;font-size:0.78rem;color:var(--muted)">เฉพาะบัญชี Google ที่อนุญาตใน backend เท่านั้น</p>
+    </div>
+  </div>
+</div>
+
+<!-- ════════ BOOKING MODAL ════════ -->
+<div class="modal-overlay hidden" id="bookModal">
+  <div class="modal">
+    <h2>Book Session</h2>
+    <p style="color:var(--muted);font-size:0.88rem;">Fill in your details to confirm the booking.</p>
+    <div class="slot-info">
+      <p>📅 Date & Time</p>
+      <strong id="modalSlotInfo">—</strong>
+    </div>
+    <div class="form-group">
+      <label>Full Name *</label>
+      <input type="text" id="clientName" placeholder="e.g. John Smith">
+    </div>
+    <div class="form-group">
+      <label>Phone Number *</label>
+      <input type="tel" id="clientPhone" placeholder="0812345678">
+    </div>
+    <div class="form-group">
+      <label>Goal / Notes</label>
+      <textarea id="clientNote" placeholder="e.g. Weight loss, muscle gain, any injuries..."></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeBookModal()">Cancel</button>
+      <button class="btn btn-accent" onclick="confirmBooking()">✓ Confirm Booking</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════════ CANCEL MODAL ════════ -->
+<div class="modal-overlay hidden" id="cancelModal">
+  <div class="modal">
+    <h2>Cancel Booking</h2>
+    <div class="slot-info" style="border-color:rgba(255,71,71,0.2);background:rgba(255,71,71,0.05)">
+      <p>📅 Session to Cancel</p>
+      <strong id="cancelSlotInfo" style="color:var(--accent2)">—</strong>
+    </div>
+    <p style="font-size:0.9rem;color:var(--muted)">Are you sure you want to cancel this session? This action cannot be undone.</p>
+    <div class="modal-actions" style="margin-top:1.2rem">
+      <button class="btn btn-ghost" onclick="closeCancelModal()">No, Keep It</button>
+      <button class="btn btn-danger" onclick="confirmCancel()">Cancel Booking</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════════ TRAINER SLOT MANAGEMENT MODAL ════════ -->
+<div class="modal-overlay hidden" id="trainerSlotModal">
+  <div class="modal">
+    <h2 id="tSlotTitle">Slot Details</h2>
+    <div class="slot-info" id="tSlotInfo"></div>
+    <div id="tSlotClientInfo"></div>
+    <div class="modal-actions" id="tSlotActions"></div>
+  </div>
+</div>
+
+<!-- ════════ TOAST ════════ -->
+<div class="toast hidden" id="toast">
+  <div class="toast-icon" id="toastIcon">✅</div>
+  <div class="toast-body">
+    <p id="toastTitle">Success</p>
+    <p id="toastMsg">—</p>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════
+//  CONFIGURATION
+// ══════════════════════════════════════════════════
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz-OQYLIkAZZLQICqpN30ySqe_PvH5EBLFdzprm5jFPskc0VjttUcRYhZTst2RV2B8ing/exec";
+/** OAuth 2.0 Client ID (Web application) จาก Google Cloud Console */
+const GOOGLE_CLIENT_ID = '408170423061-j89udohp7im1tunurp98u8e9nh2k4etg.apps.googleusercontent.com';
+
+const TRAINER_ACTIONS = ['add_slot', 'delete_slot', 'approve_slot', 'verify_trainer'];
+
+// ══════════════════════════════════════════════════
+//  STATE
+// ══════════════════════════════════════════════════
+let isTrainer = false;
+let trainerCredential = null;
+let currentWeek = 0;   // client week offset
+let trainerWeek = 0;   // trainer week offset
+let selectedSlotId = null;
+let trainerSelectedSlotId = null;
+let cancelSlotId = null;
+
+// Slots fetched from the API (cached for current render)
+let slots = [];
+
+// Client's own bookings by slot ID — stored in localStorage per device
+// Primary: is_mine from API (via client_token). Fallback: myBookings for backward compat.
+let myBookings = JSON.parse(localStorage.getItem('twm_mine') || '[]');
+
+function saveMyBookings() {
+  localStorage.setItem('twm_mine', JSON.stringify(myBookings));
+}
+
+/**
+ * Get or generate a unique client token stored in localStorage.
+ * This token is sent with all API requests so the backend can
+ * identify which slots belong to this browser.
+ */
+function getClientToken() {
+  let token = localStorage.getItem('twm_client_token');
+  if (!token) {
+    token = 'client_' + crypto.randomUUID();
+    localStorage.setItem('twm_client_token', token);
+  }
+  return token;
+}
+
+// ══════════════════════════════════════════════════
+//  API HELPERS
+// ══════════════════════════════════════════════════
+
+/**
+ * Fetch all slots from Google Sheets via the Apps Script Web App.
+ * Sends the client token so the backend can mark slots as is_mine.
+ */
+async function loadSlotsFromSheets() {
+  try {
+    const clientToken = getClientToken();
+    const url = SCRIPT_URL + '?clientToken=' + encodeURIComponent(clientToken);
+    const resp = await fetch(url, { cache: 'no-store' });
+    const data = await resp.json();
+    slots = data.slots || [];
+  } catch (err) {
+    console.error('Failed to load slots:', err);
+    slots = [];
+  }
+  return slots;
+}
+
+/**
+ * Send a POST action to the Apps Script Web App.
+ * @param {string} action - The action name
+ * @param {object} payload - Additional fields to send
+ * @returns {Promise<{success: boolean, message?: string}>}
+ */
+async function postAction(action, payload = {}) {
+  const body = { action, ...payload };
+  const needsTrainer =
+    TRAINER_ACTIONS.includes(action) ||
+    (action === 'reject_slot' && !body.clientToken);
+
+  if (needsTrainer) {
+    if (!trainerCredential) {
+      return { success: false, message: 'กรุณา Sign in ด้วย Google ก่อน' };
+    }
+    body.trainerIdToken = trainerCredential;
+  }
+
+  try {
+    const resp = await fetch(SCRIPT_URL, {
+      method: 'POST',
+      mode: 'cors',
+      cache: 'no-store',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    return await resp.json();
+  } catch (err) {
+    return { success: false, message: err.toString() };
+  }
+}
+
+// ══════════════════════════════════════════════════
+//  HELPERS
+// ══════════════════════════════════════════════════
+function fmtDate(d) { return d.toISOString().slice(0,10); }
+
+function thaiDate(dateStr) {
+  const d = new Date(dateStr + 'T00:00:00');
+  return d.toLocaleDateString('th-TH', { weekday:'short', day:'numeric', month:'short' });
+}
+
+// ══════════════════════════════════════════════════
+//  VIEWS
+// ══════════════════════════════════════════════════
+function showView(id) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+async function showClientBooking() {
+  isTrainer = false;
+  showView('clientView');
+  updateNavClient();
+  await renderClientGrid();
+}
+
+function clearTrainerSession() {
+  trainerCredential = null;
+  sessionStorage.removeItem('twm_trainer_credential');
+  sessionStorage.removeItem('twm_trainer_credential_exp');
+  sessionStorage.removeItem('twm_trainer_email');
+}
+
+function loadTrainerSession() {
+  const cred = sessionStorage.getItem('twm_trainer_credential');
+  const exp = Number(sessionStorage.getItem('twm_trainer_credential_exp') || 0);
+  if (cred && exp && Date.now() < exp * 1000) {
+    trainerCredential = cred;
+    return true;
+  }
+  clearTrainerSession();
+  return false;
+}
+
+function initGoogleSignIn() {
+  const btnEl = document.getElementById('googleSignInBtn');
+  const hintEl = document.getElementById('googleSignInHint');
+  if (!btnEl) return;
+
+  if (!GOOGLE_CLIENT_ID || GOOGLE_CLIENT_ID.includes('YOUR_GOOGLE')) {
+    if (hintEl) hintEl.style.display = 'block';
+    return;
+  }
+  if (hintEl) hintEl.style.display = 'none';
+
+  if (!window.google || !google.accounts || !google.accounts.id) {
+    setTimeout(initGoogleSignIn, 300);
+    return;
+  }
+
+  google.accounts.id.initialize({
+    client_id: GOOGLE_CLIENT_ID,
+    callback: handleGoogleCredentialResponse,
+    auto_select: false
+  });
+  btnEl.innerHTML = '';
+  google.accounts.id.renderButton(btnEl, {
+    theme: 'filled_black',
+    size: 'large',
+    width: 300,
+    text: 'signin_with',
+    shape: 'rectangular'
+  });
+}
+
+function showTrainerLogin() {
+  showView('trainerLoginView');
+  initGoogleSignIn();
+}
+
+async function handleGoogleCredentialResponse(response) {
+  trainerCredential = response.credential;
+  const payload = JSON.parse(
+    atob(trainerCredential.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))
+  );
+  sessionStorage.setItem('twm_trainer_credential', trainerCredential);
+  sessionStorage.setItem('twm_trainer_credential_exp', String(payload.exp));
+
+  const result = await postAction('verify_trainer', {});
+  if (result.success) {
+    isTrainer = true;
+    if (result.email) {
+      sessionStorage.setItem('twm_trainer_email', result.email);
+    }
+    showView('trainerView');
+    updateNavTrainer();
+    await refreshAllTrainerViews();
+    showToast('✅', 'Welcome', result.email || 'Trainer mode', 'success');
+  } else {
+    clearTrainerSession();
+    showToast('❌', 'Access Denied', result.message || 'Not authorized', 'error');
+  }
+}
+
+function trainerLogout() {
+  isTrainer = false;
+  clearTrainerSession();
+  if (window.google && google.accounts && google.accounts.id) {
+    google.accounts.id.disableAutoSelect();
+  }
+  showClientBooking();
+}
+
+function updateNavClient() {
+  document.getElementById('navActions').innerHTML = `
+    <button class="btn btn-ghost" onclick="showTrainerLogin()">🏋️ Trainer</button>
+    <button class="btn btn-accent" onclick="scrollToSchedule()">Book Session</button>
+  `;
+}
+
+function updateNavTrainer() {
+  const email = sessionStorage.getItem('twm_trainer_email') || '';
+  const greet = document.getElementById('trainerGreeting');
+  if (greet) {
+    greet.textContent = email ? `Signed in: ${email}` : 'Hey, Trainer AA 👋';
+  }
+  document.getElementById('navActions').innerHTML = `
+    <button class="btn btn-ghost" onclick="trainerLogout()">Logout</button>
+  `;
+}
+
+function scrollToSchedule() {
+  document.getElementById('scheduleSection').scrollIntoView({ behavior:'smooth' });
+}
+
+// ══════════════════════════════════════════════════
+//  WEEK HELPERS
+// ══════════════════════════════════════════════════
+function getWeekDates(offset) {
+  const today = new Date();
+  const start = new Date(today);
+  start.setDate(today.getDate() + offset * 7);
+  return Array.from({length:7}, (_,i) => {
+    const d = new Date(start);
+    d.setDate(start.getDate() + i);
+    return d;
+  });
+}
+
+function setWeekLabel(dates, elId) {
+  const s = dates[0].toLocaleDateString('th-TH', {day:'numeric',month:'short'});
+  const e = dates[6].toLocaleDateString('th-TH', {day:'numeric',month:'short'});
+  document.getElementById(elId).textContent = `${s} – ${e}`;
+}
+
+function prevWeek() { currentWeek--; renderClientGrid(); }
+function nextWeek() { currentWeek++; renderClientGrid(); }
+function prevWeekT() { trainerWeek--; renderTrainerGrid(); }
+function nextWeekT() { trainerWeek++; renderTrainerGrid(); }
+
+// ══════════════════════════════════════════════════
+//  CLIENT GRID
+// ══════════════════════════════════════════════════
+const DAYS_TH = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+
+async function renderClientGrid() {
+  await loadSlotsFromSheets();
+
+  const dates = getWeekDates(currentWeek);
+  setWeekLabel(dates, 'weekLabel');
+  const today = fmtDate(new Date());
+  const grid = document.getElementById('clientGrid');
+  grid.innerHTML = '';
+
+  dates.forEach(d => {
+    const dateStr = fmtDate(d);
+    const col = document.createElement('div');
+    col.className = 'day-col';
+
+    const isToday = dateStr === today;
+    col.innerHTML = `
+      <div class="day-header ${isToday?'today':''}">
+        <div class="day-name">${DAYS_TH[d.getDay()]}</div>
+        <div class="day-date">${d.getDate()}</div>
+      </div>
+    `;
+
+    const daySlots = slots.filter(s => s.date === dateStr).sort((a,b) => a.time.localeCompare(b.time));
+    if (daySlots.length === 0) {
+      col.innerHTML += `<div style="text-align:center;color:var(--muted);font-size:0.7rem;padding:0.5rem">—</div>`;
+    } else {
+      daySlots.forEach(s => {
+        const status = s.status;
+        const isMine = s.is_mine || myBookings.includes(s.id);
+        let cls, label;
+
+        if (status === 'booked') {
+          cls = isMine ? 'my-booking' : 'booked';
+          label = isMine ? '✓ Yours' : 'Full';
+        } else if (status === 'pending') {
+          cls = 'pending';
+          label = '⏳ Pending (Queue up)';
+        } else {
+          cls = 'available';
+          label = 'Book Now';
+        }
+
+        const el = document.createElement('div');
+        el.className = `slot ${cls}`;
+        el.innerHTML = `<div class="slot-time">${s.time}</div><div class="slot-label">${label}</div>`;
+
+        if (status === 'available') {
+          el.onclick = () => openBookModal(s.id);
+        } else if (status === 'pending') {
+          el.onclick = () => {
+            if (confirm('This slot already has a pending request. Would you like to submit an alternative request to queue up?')) {
+              openBookModal(s.id);
+            }
+          };
+        } else if (status === 'booked' && isMine) {
+          el.onclick = () => openCancelModal(s.id);
+        }
+
+        col.appendChild(el);
+      });
+    }
+    grid.appendChild(col);
+  });
+}
+
+// ══════════════════════════════════════════════════
+//  BOOKING MODAL
+// ══════════════════════════════════════════════════
+function openBookModal(slotId) {
+  selectedSlotId = slotId;
+  const s = slots.find(x => x.id === slotId);
+  if (!s) return;
+  document.getElementById('modalSlotInfo').textContent = `${thaiDate(s.date)} at ${s.time}`;
+  document.getElementById('clientName').value = '';
+  document.getElementById('clientPhone').value = '';
+  document.getElementById('clientNote').value = '';
+  document.getElementById('bookModal').classList.remove('hidden');
+}
+
+function closeBookModal() {
+  document.getElementById('bookModal').classList.add('hidden');
+  selectedSlotId = null;
+}
+
+async function confirmBooking() {
+  const name = document.getElementById('clientName').value.trim();
+  const phone = document.getElementById('clientPhone').value.trim();
+  const note = document.getElementById('clientNote').value.trim();
+  if (!name || !phone) {
+    showToast('⚠️', 'Missing Info', 'Name and phone are required.', 'warning');
+    return;
+  }
+
+  const result = await postAction('book', { id: selectedSlotId, name, phone, note, clientToken: getClientToken() });
+
+  if (result.success) {
+    myBookings.push(selectedSlotId);
+    saveMyBookings();
+    closeBookModal();
+    await renderClientGrid();
+    showToast('✅', 'Booking Request Sent!', 'Your booking request is pending trainer approval.', 'success');
+  } else {
+    showToast('❌', 'Booking Failed', result.message || 'Could not complete booking.', 'error');
+    // Refresh grid to reflect actual state
+    await renderClientGrid();
+  }
+}
+
+// ══════════════════════════════════════════════════
+//  CANCEL / UNBOOK (Client)
+// ══════════════════════════════════════════════════
+function openCancelModal(slotId) {
+  cancelSlotId = slotId;
+  const s = slots.find(x => x.id === slotId);
+  if (!s) return;
+  document.getElementById('cancelSlotInfo').textContent = `${thaiDate(s.date)} at ${s.time}`;
+  document.getElementById('cancelModal').classList.remove('hidden');
+}
+
+function closeCancelModal() {
+  document.getElementById('cancelModal').classList.add('hidden');
+  cancelSlotId = null;
+}
+
+async function confirmCancel() {
+  const id = cancelSlotId;
+  if (!id) return;
+  const result = await postAction('reject_slot', { id, clientToken: getClientToken() });
+
+  if (result.success) {
+    myBookings = myBookings.filter(bid => bid !== id);
+    saveMyBookings();
+    closeCancelModal();
+    await renderClientGrid();
+    showToast('🗓', 'Booking Cancelled', 'Your session has been cancelled.', 'info');
+  } else {
+    showToast('❌', 'Cancel Failed', result.message || 'Could not cancel booking.', 'error');
+  }
+}
+
+// ══════════════════════════════════════════════════
+//  (end Cancel)
+// ══════════════════════════════════════════════════
+async function renderTrainerGrid() {
+  await loadSlotsFromSheets();
+
+  const dates = getWeekDates(trainerWeek);
+  setWeekLabel(dates, 'weekLabelT');
+  const today = fmtDate(new Date());
+  const grid = document.getElementById('trainerGrid');
+  grid.innerHTML = '';
+
+  dates.forEach(d => {
+    const dateStr = fmtDate(d);
+    const col = document.createElement('div');
+    col.className = 'day-col';
+    const isToday = dateStr === today;
+    col.innerHTML = `
+      <div class="day-header ${isToday?'today':''}">
+        <div class="day-name">${DAYS_TH[d.getDay()]}</div>
+        <div class="day-date">${d.getDate()}</div>
+      </div>
+    `;
+
+    const daySlots = slots.filter(s => s.date === dateStr).sort((a,b) => a.time.localeCompare(b.time));
+    if (daySlots.length === 0) {
+      col.innerHTML += `<div style="text-align:center;color:var(--muted);font-size:0.7rem;padding:0.5rem">—</div>`;
+    } else {
+      daySlots.forEach(s => {
+        const status = s.status;
+        let cls, label;
+
+        if (status === 'booked') {
+          cls = 'booked-trainer';
+          label = s.name ? s.name.split(' ')[0] : 'Booked';
+        } else if (status === 'pending') {
+          cls = 'pending';
+          label = s.name ? '⏳ ' + s.name.split(' ')[0] : '⏳ Pending';
+        } else {
+          cls = 'available';
+          label = 'Open';
+        }
+
+        const el = document.createElement('div');
+        el.className = `slot ${cls}`;
+        el.innerHTML = `
+          <div class="slot-time">${s.time}</div>
+          <div class="slot-label" style="overflow:hidden;max-width:100%;text-overflow:ellipsis;white-space:nowrap">${label}</div>
+        `;
+        el.onclick = () => openTrainerSlotModal(s.id);
+        col.appendChild(el);
+      });
+    }
+    grid.appendChild(col);
+  });
+}
+
+// ══════════════════════════════════════════════════
+//  TRAINER SLOT MODAL
+// ══════════════════════════════════════════════════
+function openTrainerSlotModal(slotId) {
+  trainerSelectedSlotId = slotId;
+  const s = slots.find(x => x.id === slotId);
+  if (!s) return;
+
+  const status = s.status;
+  document.getElementById('tSlotInfo').innerHTML = `
+    <p>📅 Date & Time</p>
+    <strong>${thaiDate(s.date)} at ${s.time}</strong>
+  `;
+
+  if (status === 'available') {
+    document.getElementById('tSlotTitle').textContent = '📅 Available Slot';
+    document.getElementById('tSlotClientInfo').innerHTML = `
+      <p style="color:var(--muted);margin-top:1rem;font-size:0.9rem">No bookings yet. You can delete this slot.</p>
+    `;
+    document.getElementById('tSlotActions').innerHTML = `
+      <button class="btn btn-ghost" onclick="closeTrainerSlotModal()">Close</button>
+      <button class="btn btn-danger" onclick="trainerDeleteSlot()">🗑 Delete Slot</button>
+    `;
+  } else {
+    const statusLabel = status === 'pending' ? '⏳ Pending' : '✅ Booked';
+    document.getElementById('tSlotTitle').textContent = status === 'pending' ? '⏳ Pending Request' : '📋 Client Details';
+
+    document.getElementById('tSlotClientInfo').innerHTML = `
+      <div style="display:flex;flex-direction:column;gap:0.7rem;margin-top:1rem">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span style="color:var(--muted);font-size:0.85rem">Status</span>
+          <span style="font-size:0.75rem;font-weight:700;letter-spacing:1px;padding:0.15rem 0.5rem;border-radius:4px;background:${status === 'pending' ? 'rgba(255,170,0,0.2)' : 'rgba(71,255,184,0.15)'};color:${status === 'pending' ? 'var(--pending)' : 'var(--success)'}">${statusLabel}</span>
+        </div>
+        <div>
+          <span style="color:var(--muted);font-size:0.85rem">Client Name</span>
+          <div style="font-weight:700;font-size:1.1rem;margin-top:0.2rem">${s.name || '—'}</div>
+        </div>
+        <div>
+          <span style="color:var(--muted);font-size:0.85rem">Phone</span>
+          <div style="font-weight:600;margin-top:0.2rem">${s.phone || '—'}</div>
+        </div>
+        ${s.note ? `<div>
+          <span style="color:var(--muted);font-size:0.85rem">Notes</span>
+          <div style="color:var(--muted);font-style:italic;margin-top:0.2rem">${s.note}</div>
+        </div>` : ''}
+      </div>
+    `;
+
+    if (status === 'pending') {
+      document.getElementById('tSlotActions').innerHTML = `
+        <button class="btn btn-ghost" onclick="closeTrainerSlotModal()">Close</button>
+        <button class="btn btn-danger" onclick="trainerRejectSlot()">✕ Reject</button>
+        <button class="btn btn-success" onclick="trainerApproveSlot()">✓ Approve</button>
+      `;
+    } else {
+      // booked
+      document.getElementById('tSlotActions').innerHTML = `
+        <button class="btn btn-ghost" onclick="closeTrainerSlotModal()">Close</button>
+        <button class="btn btn-danger" onclick="trainerRejectSlot()">✕ Clear / Cancel</button>
+      `;
+    }
+  }
+
+  document.getElementById('trainerSlotModal').classList.remove('hidden');
+}
+
+function closeTrainerSlotModal() {
+  document.getElementById('trainerSlotModal').classList.add('hidden');
+  trainerSelectedSlotId = null;
+}
+
+async function trainerApproveSlot() {
+  const id = trainerSelectedSlotId;
+  if (!id) return;
+  const result = await postAction('approve_slot', { id });
+  if (result.success) {
+    closeTrainerSlotModal();
+    await refreshAllTrainerViews();
+    showToast('✅', 'Approved!', 'Slot has been confirmed as booked.', 'success');
+  } else {
+    showToast('❌', 'Approve Failed', result.message || 'Could not approve.', 'error');
+  }
+}
+
+async function trainerRejectSlot() {
+  const id = trainerSelectedSlotId;
+  if (!id) return;
+  const result = await postAction('reject_slot', { id });
+  if (result.success) {
+    closeTrainerSlotModal();
+    await refreshAllTrainerViews();
+    showToast('🗑', 'Slot Reset', 'Slot is now available again.', 'info');
+  } else {
+    showToast('❌', 'Reject Failed', result.message || 'Could not reject.', 'error');
+  }
+}
+
+async function trainerDeleteSlot() {
+  const id = trainerSelectedSlotId;
+  if (!id) return;
+  if (!confirm('Are you sure you want to delete this slot?')) return;
+  const result = await postAction('delete_slot', { id });
+  if (result.success) {
+    closeTrainerSlotModal();
+    await refreshAllTrainerViews();
+    showToast('🗑', 'Slot Deleted', 'Slot has been removed.', 'info');
+  } else {
+    showToast('❌', 'Delete Failed', result.message || 'Could not delete.', 'error');
+  }
+}
+
+async function refreshAllTrainerViews() {
+  await loadSlotsFromSheets();
+  renderTrainerGrid();
+  renderBookingsList();
+}
+
+// ══════════════════════════════════════════════════
+//  ADD SLOT (Trainer)
+// ══════════════════════════════════════════════════
+async function addSlot() {
+  const date = document.getElementById('newSlotDate').value;
+  const time = document.getElementById('newSlotTime').value;
+  if (!date || !time) {
+    showToast('⚠️', 'Missing Info', 'Please select both date and time.', 'warning');
+    return;
+  }
+
+  const result = await postAction('add_slot', { date, time });
+
+  if (result.success) {
+    document.getElementById('newSlotDate').value = '';
+    document.getElementById('newSlotTime').value = '';
+    await refreshAllTrainerViews();
+    showToast('✅', 'Slot Added', `${thaiDate(date)} at ${time}`, 'success');
+  } else {
+    showToast('⚠️', 'Add Failed', result.message || 'Could not add slot.', 'warning');
+  }
+}
+
+// ══════════════════════════════════════════════════
+//  BOOKINGS LIST (Trainer)
+// ══════════════════════════════════════════════════
+function renderBookingsList() {
+  // Show both pending and booked slots, grouped by status
+  const withClients = slots.filter(s => s.status === 'pending' || s.status === 'booked')
+    .sort((a,b) => {
+      if (a.status !== b.status) return a.status === 'pending' ? -1 : 1;
+      if (a.date !== b.date) return a.date.localeCompare(b.date);
+      return a.time.localeCompare(b.time);
+    });
+
+  const el = document.getElementById('bookingsList');
+  if (withClients.length === 0) {
+    el.innerHTML = `<div class="empty-state"><div class="icon">📭</div><p>No bookings or pending requests yet</p></div>`;
+    return;
+  }
+
+  el.innerHTML = withClients.map(s => {
+    const isPending = s.status === 'pending';
+    return `
+      <div class="booking-card ${isPending ? 'booking-pending' : ''}">
+        <div>
+          <div style="font-size:0.78rem;color:var(--muted);margin-bottom:0.2rem">${thaiDate(s.date)}</div>
+          <div class="bk-time">${s.time}</div>
+        </div>
+        <div style="flex:1;min-width:120px">
+          <div class="bk-name">
+            ${s.name || '—'}
+            <span class="bk-status ${isPending ? 'bk-status-pending' : 'bk-status-booked'}">${isPending ? '⏳ PENDING' : '✅ BOOKED'}</span>
+          </div>
+          <div class="bk-phone">📞 ${s.phone || '—'}</div>
+          ${s.note ? `<div class="bk-note">💬 ${s.note}</div>` : ''}
+        </div>
+        <div class="bk-actions">
+          ${isPending ? `
+            <button class="btn btn-success btn-sm" onclick="quickApprove('${s.id}')">✓ Approve</button>
+            <button class="btn btn-danger btn-sm" onclick="quickReject('${s.id}')">✕ Reject</button>
+          ` : `
+            <button class="btn btn-danger btn-sm" onclick="quickReject('${s.id}')">✕ Clear</button>
+          `}
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+async function quickApprove(id) {
+  const result = await postAction('approve_slot', { id });
+  if (result.success) {
+    await refreshAllTrainerViews();
+    showToast('✅', 'Approved!', 'Slot confirmed as booked.', 'success');
+  } else {
+    showToast('❌', 'Failed', result.message || 'Could not approve.', 'error');
+  }
+}
+
+async function quickReject(id) {
+  if (!confirm('Are you sure?')) return;
+  const result = await postAction('reject_slot', { id });
+  if (result.success) {
+    await refreshAllTrainerViews();
+    showToast('🗑', 'Slot Reset', 'Slot is now available.', 'info');
+  } else {
+    showToast('❌', 'Failed', result.message || 'Could not reject.', 'error');
+  }
+}
+
+// ══════════════════════════════════════════════════
+//  TABS
+// ══════════════════════════════════════════════════
+function switchTab(name, btn) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('tab-schedule').style.display = name === 'schedule' ? '' : 'none';
+  document.getElementById('tab-bookings').style.display = name === 'bookings' ? '' : 'none';
+  if (name === 'bookings') renderBookingsList();
+}
+// ══════════════════════════════════════════════════
+//  TOAST
+// ══════════════════════════════════════════════════
+let toastTimer;
+function showToast(icon, title, msg, type='success') {
+  const t = document.getElementById('toast');
+  document.getElementById('toastIcon').textContent = icon;
+  document.getElementById('toastTitle').textContent = title;
+  document.getElementById('toastMsg').textContent = msg;
+  t.className = `toast ${type}`;
+  clearTimeout(toastTimer);
+  t.classList.remove('hidden');
+  toastTimer = setTimeout(() => t.classList.add('hidden'), 4000);
+}
+
+// ══════════════════════════════════════════════════
+//  INIT
+// ══════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', async () => {
+  const today = new Date();
+  document.getElementById('newSlotDate').value = fmtDate(today);
+  document.getElementById('newSlotTime').value = '09:00';
+  await renderClientGrid();
+});
+
+// Close modals on overlay click
+document.getElementById('bookModal').addEventListener('click', function(e) {
+  if (e.target === this) closeBookModal();
+});
+document.getElementById('cancelModal').addEventListener('click', function(e) {
+  if (e.target === this) closeCancelModal();
+});
+document.getElementById('trainerSlotModal').addEventListener('click', function(e) {
+  if (e.target === this) closeTrainerSlotModal();
+});
+
+// Keyboard ESC
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    closeBookModal();
+    closeCancelModal();
+    closeTrainerSlotModal();
+  }
+});
+</script>
+</body>
+</html>
