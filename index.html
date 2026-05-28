@@ -710,9 +710,9 @@
       <div class="legend-item"><div class="legend-dot ld-pending"></div> Pending (Queue)</div>
       <div class="legend-item"><div class="legend-dot ld-booked"></div> Booked</div>
       <div class="legend-item"><div class="legend-dot ld-mine"></div> Your Booking</div>
-      <div class="legend-item"><div class="legend-dot ld-soon"></div> Within 12h (not bookable)</div>
+      <div class="legend-item"><div class="legend-dot ld-soon"></div> Within 6h (not bookable)</div>
     </div>
-    <p style="font-size:0.82rem;color:var(--muted);margin:-0.5rem 0 1rem;">Book at least <strong style="color:var(--text)">12 hours</strong> before your session. Times are <strong style="color:var(--text)">Asia/Bangkok (GMT+7)</strong>.</p>
+    <p style="font-size:0.82rem;color:var(--muted);margin:-0.5rem 0 1rem;">Book at least <strong style="color:var(--text)">6 hours</strong> before your session. Times are <strong style="color:var(--text)">Asia/Bangkok (GMT+7)</strong>.</p>
 
     <div class="schedule-grid" id="clientGrid"></div>
   </div>
@@ -871,7 +871,7 @@ const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz-OQYLIkAZZLQICqpN3
 const GOOGLE_CLIENT_ID = '408170423061-j89udohp7im1tunurp98u8e9nh2k4etg.apps.googleusercontent.com';
 
 const TRAINER_ACTIONS = ['add_slot', 'delete_slot', 'approve_slot', 'verify_trainer'];
-const MIN_BOOKING_LEAD_HOURS = 12;
+const MIN_BOOKING_LEAD_HOURS = 6;
 const MIN_BOOKING_LEAD_MS = MIN_BOOKING_LEAD_HOURS * 60 * 60 * 1000;
 /** Must match Code.gs APP_TIMEZONE */
 const APP_TIMEZONE = 'Asia/Bangkok';
