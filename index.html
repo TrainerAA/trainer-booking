@@ -804,7 +804,14 @@ let slots = [];
 
 // Client's own bookings by slot ID — stored in localStorage per device
 // Primary: is_mine from API (via client_token). Fallback: myBookings for backward compat.
-let myBookings = JSON.parse(localStorage.getItem('twm_mine') || '[]');
+let myBookings = [];
+try {
+  myBookings = JSON.parse(localStorage.getItem('twm_mine') || '[]');
+  if (!Array.isArray(myBookings)) myBookings = [];
+} catch {
+  myBookings = [];
+  localStorage.removeItem('twm_mine');
+}
 
 function saveMyBookings() {
   localStorage.setItem('twm_mine', JSON.stringify(myBookings));
@@ -836,14 +843,54 @@ async function loadSlotsFromSheets() {
   try {
     const clientToken = getClientToken();
     const url = SCRIPT_URL + '?clientToken=' + encodeURIComponent(clientToken);
-    const resp = await fetch(url, { cache: 'no-store' });
-    const data = await resp.json();
+    const data = await gasJson(url, { method: 'GET' });
     slots = data.slots || [];
+    hideApiError();
+    if (data.error) {
+      console.warn('API warning:', data.error);
+    }
   } catch (err) {
     console.error('Failed to load slots:', err);
     slots = [];
+    showApiError(err.message || String(err));
   }
   return slots;
+}
+
+/** Fetch JSON from Google Apps Script (avoids CORS preflight issues). */
+async function gasJson(url, options = {}) {
+  const resp = await fetch(url, {
+    ...options,
+    redirect: 'follow',
+    cache: 'no-store',
+    headers: {
+      ...(options.headers || {}),
+      ...(options.method === 'POST' ? { 'Content-Type': 'text/plain;charset=utf-8' } : {})
+    }
+  });
+  const text = await resp.text();
+  try {
+    return JSON.parse(text);
+  } catch {
+    throw new Error('API returned non-JSON. Check SCRIPT_URL and Web App deploy.');
+  }
+}
+
+function showApiError(msg) {
+  let el = document.getElementById('apiErrorBanner');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'apiErrorBanner';
+    el.style.cssText = 'position:fixed;bottom:1rem;left:1rem;right:1rem;z-index:400;background:rgba(255,71,71,0.15);border:1px solid var(--accent2);color:#ff8888;padding:0.75rem 1rem;border-radius:8px;font-size:0.85rem;';
+    document.body.appendChild(el);
+  }
+  el.textContent = '⚠️ โหลดข้อมูลไม่สำเร็จ: ' + msg + ' — เปิด DevTools > Network ดู request ไป script.google.com';
+  el.style.display = 'block';
+}
+
+function hideApiError() {
+  const el = document.getElementById('apiErrorBanner');
+  if (el) el.style.display = 'none';
 }
 
 /**
@@ -866,15 +913,12 @@ async function postAction(action, payload = {}) {
   }
 
   try {
-    const resp = await fetch(SCRIPT_URL, {
+    return await gasJson(SCRIPT_URL, {
       method: 'POST',
-      mode: 'cors',
-      cache: 'no-store',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body)
     });
-    return await resp.json();
   } catch (err) {
+    showApiError(err.message || String(err));
     return { success: false, message: err.toString() };
   }
 }
@@ -1478,8 +1522,10 @@ function showToast(icon, title, msg, type='success') {
 // ══════════════════════════════════════════════════
 document.addEventListener('DOMContentLoaded', async () => {
   const today = new Date();
-  document.getElementById('newSlotDate').value = fmtDate(today);
-  document.getElementById('newSlotTime').value = '09:00';
+  const dateEl = document.getElementById('newSlotDate');
+  const timeEl = document.getElementById('newSlotTime');
+  if (dateEl) dateEl.value = fmtDate(today);
+  if (timeEl) timeEl.value = '09:00';
   await renderClientGrid();
 });
 
