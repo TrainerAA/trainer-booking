@@ -712,7 +712,7 @@
       <div class="legend-item"><div class="legend-dot ld-mine"></div> Your Booking</div>
       <div class="legend-item"><div class="legend-dot ld-soon"></div> Within 24h (not bookable)</div>
     </div>
-    <p style="font-size:0.82rem;color:var(--muted);margin:-0.5rem 0 1rem;">Book at least <strong style="color:var(--text)">24 hours</strong> before your session.</p>
+    <p style="font-size:0.82rem;color:var(--muted);margin:-0.5rem 0 1rem;">Book at least <strong style="color:var(--text)">24 hours</strong> before your session. Times are <strong style="color:var(--text)">Asia/Bangkok (GMT+7)</strong>.</p>
 
     <div class="schedule-grid" id="clientGrid"></div>
   </div>
@@ -872,6 +872,9 @@ const GOOGLE_CLIENT_ID = '408170423061-j89udohp7im1tunurp98u8e9nh2k4etg.apps.goo
 
 const TRAINER_ACTIONS = ['add_slot', 'delete_slot', 'approve_slot', 'verify_trainer'];
 const MIN_BOOKING_LEAD_MS = 24 * 60 * 60 * 1000;
+/** Must match Code.gs APP_TIMEZONE */
+const APP_TIMEZONE = 'Asia/Bangkok';
+const APP_TZ_OFFSET = '+07:00';
 
 // ══════════════════════════════════════════════════
 //  STATE
@@ -1046,14 +1049,17 @@ async function postAction(action, payload = {}) {
 // ══════════════════════════════════════════════════
 //  HELPERS
 // ══════════════════════════════════════════════════
-function fmtDate(d) { return d.toISOString().slice(0, 10); }
+function fmtDate(d) {
+  return d.toLocaleDateString('en-CA', { timeZone: APP_TIMEZONE });
+}
 
 function formatDisplayDate(dateStr) {
   if (!dateStr) return '—';
   const s = String(dateStr).trim().slice(0, 10);
-  const d = new Date(s + 'T12:00:00');
+  const d = new Date(s + 'T12:00:00' + APP_TZ_OFFSET);
   if (isNaN(d.getTime())) return s;
   return d.toLocaleDateString('en-US', {
+    timeZone: APP_TIMEZONE,
     weekday: 'short',
     month: 'short',
     day: 'numeric',
@@ -1069,7 +1075,12 @@ function formatTime(timeVal) {
   if (hm) return ('0' + hm[1]).slice(-2) + ':' + hm[2];
   const d = new Date(s);
   if (!isNaN(d.getTime())) {
-    return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+    return d.toLocaleTimeString('en-US', {
+      timeZone: APP_TIMEZONE,
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true
+    });
   }
   return s;
 }
@@ -1099,9 +1110,9 @@ function slotStartTime(dateStr, timeVal) {
   const t = formatTime(timeVal);
   const m = t.match(/^(\d{1,2}):(\d{2})/);
   if (!m || !s) return null;
-  const parts = s.split('-').map(Number);
-  if (parts.length !== 3 || parts.some(isNaN)) return null;
-  return new Date(parts[0], parts[1] - 1, parts[2], parseInt(m[1], 10), parseInt(m[2], 10), 0);
+  const hh = ('0' + m[1]).slice(-2);
+  const mm = m[2];
+  return new Date(`${s}T${hh}:${mm}:00${APP_TZ_OFFSET}`);
 }
 
 function canBookSlot(dateStr, timeVal) {
@@ -1129,9 +1140,12 @@ function setNextSlotInputs(dateStr, timeStr) {
 
   start.setTime(start.getTime() + 60 * 60 * 1000);
   dateEl.value = fmtDate(start);
-  const hh = ('0' + start.getHours()).slice(-2);
-  const mm = ('0' + start.getMinutes()).slice(-2);
-  timeEl.value = `${hh}:${mm}`;
+  timeEl.value = start.toLocaleTimeString('en-GB', {
+    timeZone: APP_TIMEZONE,
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false
+  });
 }
 
 // ══════════════════════════════════════════════════
@@ -1373,19 +1387,15 @@ async function scrollToSchedule() {
 //  WEEK HELPERS
 // ══════════════════════════════════════════════════
 function getWeekDates(offset) {
-  const today = new Date();
-  const start = new Date(today);
-  start.setDate(today.getDate() + offset * 7);
-  return Array.from({length:7}, (_,i) => {
-    const d = new Date(start);
-    d.setDate(start.getDate() + i);
-    return d;
-  });
+  const anchor = slotStartTime(fmtDate(new Date()), '12:00');
+  if (!anchor) return [];
+  const start = new Date(anchor.getTime() + offset * 7 * 24 * 60 * 60 * 1000);
+  return Array.from({ length: 7 }, (_, i) => new Date(start.getTime() + i * 24 * 60 * 60 * 1000));
 }
 
 function setWeekLabel(dates, elId) {
-  const s = dates[0].toLocaleDateString('en-US', { day: 'numeric', month: 'short' });
-  const e = dates[6].toLocaleDateString('en-US', { day: 'numeric', month: 'short' });
+  const s = dates[0].toLocaleDateString('en-US', { timeZone: APP_TIMEZONE, day: 'numeric', month: 'short' });
+  const e = dates[6].toLocaleDateString('en-US', { timeZone: APP_TIMEZONE, day: 'numeric', month: 'short' });
   document.getElementById(elId).textContent = `${s} – ${e}`;
 }
 
