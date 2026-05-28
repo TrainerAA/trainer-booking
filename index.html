@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="th">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -277,6 +277,15 @@
     box-shadow: 0 4px 16px rgba(232,255,71,0.15);
   }
 
+  .slot.too-soon {
+    background: rgba(102, 102, 102, 0.12);
+    border: 1px dashed var(--border);
+    color: var(--muted);
+    cursor: not-allowed;
+    opacity: 0.85;
+  }
+  .slot.too-soon:hover { transform: none; }
+
   .slot.booked {
     background: rgba(255,71,71,0.08);
     border-color: rgba(255,71,71,0.2);
@@ -332,6 +341,7 @@
   .ld-pending { background: var(--pending); }
   .ld-booked { background: var(--accent2); }
   .ld-mine { background: var(--success); }
+  .ld-soon { background: #666; }
 
   /* ─── MODAL ─── */
   .modal-overlay {
@@ -417,6 +427,43 @@
     box-shadow: 0 8px 32px rgba(0,0,0,0.5);
   }
   .toast.hidden { display: none; }
+
+  /* ─── LOADING OVERLAY ─── */
+  .global-loading {
+    position: fixed;
+    inset: 0;
+    z-index: 500;
+    background: rgba(10, 10, 10, 0.55);
+    backdrop-filter: blur(2px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .global-loading.hidden { display: none; }
+  .global-loading-box {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.25rem 1.75rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+  }
+  .global-loading-box p {
+    margin: 0;
+    font-size: 0.95rem;
+    color: var(--muted);
+  }
+  .spinner {
+    width: 28px;
+    height: 28px;
+    border: 3px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
 
   @keyframes slideLeft {
     from { transform: translateX(60px); opacity: 0; }
@@ -637,7 +684,9 @@
       <div class="legend-item"><div class="legend-dot ld-pending"></div> Pending (Queue)</div>
       <div class="legend-item"><div class="legend-dot ld-booked"></div> Booked</div>
       <div class="legend-item"><div class="legend-dot ld-mine"></div> Your Booking</div>
+      <div class="legend-item"><div class="legend-dot ld-soon"></div> Within 24h (not bookable)</div>
     </div>
+    <p style="font-size:0.82rem;color:var(--muted);margin:-0.5rem 0 1rem;">Book at least <strong style="color:var(--text)">24 hours</strong> before your session.</p>
 
     <div class="schedule-grid" id="clientGrid"></div>
   </div>
@@ -708,9 +757,9 @@
       <h2>TRAINER LOGIN</h2>
       <p>Sign in with your authorized Google account to manage schedule and bookings.</p>
       <div id="googleSignInBtn" style="display:flex;justify-content:center;margin:1.25rem 0;min-height:44px;"></div>
-      <p id="googleSignInHint" style="font-size:0.78rem;color:var(--accent2);display:none;">ตั้งค่า GOOGLE_CLIENT_ID ใน index.html และอีเมลใน Code.gs ก่อนใช้งาน</p>
+      <p id="googleSignInHint" style="font-size:0.78rem;color:var(--accent2);display:none;">Set GOOGLE_CLIENT_ID in index.html and your email in Code.gs first.</p>
       <button class="btn btn-ghost" style="width:100%;padding:0.7rem;font-size:0.9rem;margin-top:0.8rem;" onclick="showClientBooking()">← Back</button>
-      <p style="margin-top:1.2rem;font-size:0.78rem;color:var(--muted)">เฉพาะบัญชี Google ที่อนุญาตใน backend เท่านั้น</p>
+      <p style="margin-top:1.2rem;font-size:0.78rem;color:var(--muted)">Only Google accounts allowed in the backend can sign in.</p>
     </div>
   </div>
 </div>
@@ -769,6 +818,14 @@
   </div>
 </div>
 
+<!-- ════════ LOADING ════════ -->
+<div class="global-loading hidden" id="globalLoading" aria-live="polite" aria-busy="true">
+  <div class="global-loading-box">
+    <div class="spinner" aria-hidden="true"></div>
+    <p id="loadingMessage">Loading...</p>
+  </div>
+</div>
+
 <!-- ════════ TOAST ════════ -->
 <div class="toast hidden" id="toast">
   <div class="toast-icon" id="toastIcon">✅</div>
@@ -783,10 +840,11 @@
 //  CONFIGURATION
 // ══════════════════════════════════════════════════
 const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz-OQYLIkAZZLQICqpN30ySqe_PvH5EBLFdzprm5jFPskc0VjttUcRYhZTst2RV2B8ing/exec";
-/** OAuth 2.0 Client ID (Web application) จาก Google Cloud Console */
+/** OAuth 2.0 Client ID (Web application) from Google Cloud Console */
 const GOOGLE_CLIENT_ID = '408170423061-j89udohp7im1tunurp98u8e9nh2k4etg.apps.googleusercontent.com';
 
 const TRAINER_ACTIONS = ['add_slot', 'delete_slot', 'approve_slot', 'verify_trainer'];
+const MIN_BOOKING_LEAD_MS = 24 * 60 * 60 * 1000;
 
 // ══════════════════════════════════════════════════
 //  STATE
@@ -843,7 +901,7 @@ async function loadSlotsFromSheets() {
   try {
     const clientToken = getClientToken();
     const url = SCRIPT_URL + '?clientToken=' + encodeURIComponent(clientToken);
-    const data = await gasJson(url, { method: 'GET' });
+    const data = await gasJson(url, { method: 'GET' }, 'Loading schedule...');
     slots = data.slots || [];
     hideApiError();
     if (data.error) {
@@ -857,22 +915,45 @@ async function loadSlotsFromSheets() {
   return slots;
 }
 
+let loadingCount = 0;
+
+function showLoading(message) {
+  loadingCount++;
+  const el = document.getElementById('globalLoading');
+  const msg = document.getElementById('loadingMessage');
+  if (msg && message) msg.textContent = message;
+  if (el) el.classList.remove('hidden');
+}
+
+function hideLoading() {
+  loadingCount = Math.max(0, loadingCount - 1);
+  if (loadingCount === 0) {
+    const el = document.getElementById('globalLoading');
+    if (el) el.classList.add('hidden');
+  }
+}
+
 /** Fetch JSON from Google Apps Script (avoids CORS preflight issues). */
-async function gasJson(url, options = {}) {
-  const resp = await fetch(url, {
-    ...options,
-    redirect: 'follow',
-    cache: 'no-store',
-    headers: {
-      ...(options.headers || {}),
-      ...(options.method === 'POST' ? { 'Content-Type': 'text/plain;charset=utf-8' } : {})
-    }
-  });
-  const text = await resp.text();
+async function gasJson(url, options = {}, loadingMessage) {
+  showLoading(loadingMessage || 'Loading...');
   try {
-    return JSON.parse(text);
-  } catch {
-    throw new Error('API returned non-JSON. Check SCRIPT_URL and Web App deploy.');
+    const resp = await fetch(url, {
+      ...options,
+      redirect: 'follow',
+      cache: 'no-store',
+      headers: {
+        ...(options.headers || {}),
+        ...(options.method === 'POST' ? { 'Content-Type': 'text/plain;charset=utf-8' } : {})
+      }
+    });
+    const text = await resp.text();
+    try {
+      return JSON.parse(text);
+    } catch {
+      throw new Error('API returned non-JSON. Check SCRIPT_URL and Web App deploy.');
+    }
+  } finally {
+    hideLoading();
   }
 }
 
@@ -884,7 +965,7 @@ function showApiError(msg) {
     el.style.cssText = 'position:fixed;bottom:1rem;left:1rem;right:1rem;z-index:400;background:rgba(255,71,71,0.15);border:1px solid var(--accent2);color:#ff8888;padding:0.75rem 1rem;border-radius:8px;font-size:0.85rem;';
     document.body.appendChild(el);
   }
-  el.textContent = '⚠️ โหลดข้อมูลไม่สำเร็จ: ' + msg + ' — เปิด DevTools > Network ดู request ไป script.google.com';
+  el.textContent = '⚠️ Could not load data: ' + msg + ' — Check DevTools > Network for requests to script.google.com';
   el.style.display = 'block';
 }
 
@@ -907,16 +988,25 @@ async function postAction(action, payload = {}) {
 
   if (needsTrainer) {
     if (!trainerCredential) {
-      return { success: false, message: 'กรุณา Sign in ด้วย Google ก่อน' };
+      return { success: false, message: 'Please sign in with Google first' };
     }
     body.trainerIdToken = trainerCredential;
   }
+
+  const loadingLabels = {
+    book: 'Submitting booking...',
+    add_slot: 'Adding slot...',
+    delete_slot: 'Deleting slot...',
+    approve_slot: 'Approving...',
+    reject_slot: 'Updating...',
+    verify_trainer: 'Verifying access...'
+  };
 
   try {
     return await gasJson(SCRIPT_URL, {
       method: 'POST',
       body: JSON.stringify(body)
-    });
+    }, loadingLabels[action] || 'Saving...');
   } catch (err) {
     showApiError(err.message || String(err));
     return { success: false, message: err.toString() };
@@ -926,11 +1016,56 @@ async function postAction(action, payload = {}) {
 // ══════════════════════════════════════════════════
 //  HELPERS
 // ══════════════════════════════════════════════════
-function fmtDate(d) { return d.toISOString().slice(0,10); }
+function fmtDate(d) { return d.toISOString().slice(0, 10); }
 
-function thaiDate(dateStr) {
-  const d = new Date(dateStr + 'T00:00:00');
-  return d.toLocaleDateString('th-TH', { weekday:'short', day:'numeric', month:'short' });
+function formatDisplayDate(dateStr) {
+  if (!dateStr) return '—';
+  const s = String(dateStr).trim().slice(0, 10);
+  const d = new Date(s + 'T12:00:00');
+  if (isNaN(d.getTime())) return s;
+  return d.toLocaleDateString('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric'
+  });
+}
+
+/** Normalize time from API or Sheets to HH:mm for display. */
+function formatTime(timeVal) {
+  if (timeVal === null || timeVal === undefined || timeVal === '') return '—';
+  const s = String(timeVal).trim();
+  const hm = s.match(/^(\d{1,2}):(\d{2})/);
+  if (hm) return ('0' + hm[1]).slice(-2) + ':' + hm[2];
+  const d = new Date(s);
+  if (!isNaN(d.getTime())) {
+    return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+  }
+  return s;
+}
+
+function formatSlotWhen(dateStr, timeVal) {
+  return `${formatDisplayDate(dateStr)} at ${formatTime(timeVal)}`;
+}
+
+function slotStartTime(dateStr, timeVal) {
+  const s = String(dateStr || '').trim().slice(0, 10);
+  const t = formatTime(timeVal);
+  const m = t.match(/^(\d{1,2}):(\d{2})/);
+  if (!m || !s) return null;
+  const parts = s.split('-').map(Number);
+  if (parts.length !== 3 || parts.some(isNaN)) return null;
+  return new Date(parts[0], parts[1] - 1, parts[2], parseInt(m[1], 10), parseInt(m[2], 10), 0);
+}
+
+function canBookSlot(dateStr, timeVal) {
+  const start = slotStartTime(dateStr, timeVal);
+  if (!start) return false;
+  return start.getTime() - Date.now() >= MIN_BOOKING_LEAD_MS;
+}
+
+function bookingLeadRuleMessage() {
+  return 'Bookings must be made at least 24 hours before the session.';
 }
 
 // ══════════════════════════════════════════════════
@@ -1046,10 +1181,10 @@ function updateNavTrainer() {
   const email = sessionStorage.getItem('twm_trainer_email') || '';
   const greet = document.getElementById('trainerGreeting');
   if (greet) {
-    greet.textContent = email ? `Signed in: ${email}` : 'Hey, Trainer AA 👋';
+    greet.textContent = email ? email : 'Trainer AA';
   }
   document.getElementById('navActions').innerHTML = `
-    <button class="btn btn-ghost" onclick="trainerLogout()">Logout</button>
+    <button class="btn btn-ghost" onclick="showClientBooking()">← Client booking</button>
   `;
 }
 
@@ -1072,8 +1207,8 @@ function getWeekDates(offset) {
 }
 
 function setWeekLabel(dates, elId) {
-  const s = dates[0].toLocaleDateString('th-TH', {day:'numeric',month:'short'});
-  const e = dates[6].toLocaleDateString('th-TH', {day:'numeric',month:'short'});
+  const s = dates[0].toLocaleDateString('en-US', { day: 'numeric', month: 'short' });
+  const e = dates[6].toLocaleDateString('en-US', { day: 'numeric', month: 'short' });
   document.getElementById(elId).textContent = `${s} – ${e}`;
 }
 
@@ -1085,7 +1220,7 @@ function nextWeekT() { trainerWeek++; renderTrainerGrid(); }
 // ══════════════════════════════════════════════════
 //  CLIENT GRID
 // ══════════════════════════════════════════════════
-const DAYS_TH = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const DAYS_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 async function renderClientGrid() {
   await loadSlotsFromSheets();
@@ -1104,7 +1239,7 @@ async function renderClientGrid() {
     const isToday = dateStr === today;
     col.innerHTML = `
       <div class="day-header ${isToday?'today':''}">
-        <div class="day-name">${DAYS_TH[d.getDay()]}</div>
+        <div class="day-name">${DAYS_SHORT[d.getDay()]}</div>
         <div class="day-date">${d.getDate()}</div>
       </div>
     `;
@@ -1118,12 +1253,17 @@ async function renderClientGrid() {
         const isMine = s.is_mine || myBookings.includes(s.id);
         let cls, label;
 
+        const withinLead = !canBookSlot(s.date, s.time);
+
         if (status === 'booked') {
           cls = isMine ? 'my-booking' : 'booked';
           label = isMine ? '✓ Yours' : 'Full';
         } else if (status === 'pending') {
           cls = 'pending';
-          label = '⏳ Pending (Queue up)';
+          label = withinLead ? '< 24h' : '⏳ Pending (Queue up)';
+        } else if (withinLead) {
+          cls = 'too-soon';
+          label = '< 24h';
         } else {
           cls = 'available';
           label = 'Book Now';
@@ -1131,16 +1271,20 @@ async function renderClientGrid() {
 
         const el = document.createElement('div');
         el.className = `slot ${cls}`;
-        el.innerHTML = `<div class="slot-time">${s.time}</div><div class="slot-label">${label}</div>`;
+        el.innerHTML = `<div class="slot-time">${formatTime(s.time)}</div><div class="slot-label">${label}</div>`;
 
-        if (status === 'available') {
+        if (status === 'available' && !withinLead) {
           el.onclick = () => openBookModal(s.id);
-        } else if (status === 'pending') {
+        } else if (status === 'pending' && !withinLead) {
           el.onclick = () => {
             if (confirm('This slot already has a pending request. Would you like to submit an alternative request to queue up?')) {
               openBookModal(s.id);
             }
           };
+        } else if (status === 'available' && withinLead) {
+          el.onclick = () => showToast('⏱', 'Too Soon', bookingLeadRuleMessage(), 'warning');
+        } else if (status === 'pending' && withinLead) {
+          el.onclick = () => showToast('⏱', 'Too Soon', bookingLeadRuleMessage(), 'warning');
         } else if (status === 'booked' && isMine) {
           el.onclick = () => openCancelModal(s.id);
         }
@@ -1159,7 +1303,11 @@ function openBookModal(slotId) {
   selectedSlotId = slotId;
   const s = slots.find(x => x.id === slotId);
   if (!s) return;
-  document.getElementById('modalSlotInfo').textContent = `${thaiDate(s.date)} at ${s.time}`;
+  if (!canBookSlot(s.date, s.time)) {
+    showToast('⏱', 'Too Soon', bookingLeadRuleMessage(), 'warning');
+    return;
+  }
+  document.getElementById('modalSlotInfo').textContent = formatSlotWhen(s.date, s.time);
   document.getElementById('clientName').value = '';
   document.getElementById('clientPhone').value = '';
   document.getElementById('clientNote').value = '';
@@ -1177,6 +1325,12 @@ async function confirmBooking() {
   const note = document.getElementById('clientNote').value.trim();
   if (!name || !phone) {
     showToast('⚠️', 'Missing Info', 'Name and phone are required.', 'warning');
+    return;
+  }
+
+  const slot = slots.find(x => x.id === selectedSlotId);
+  if (slot && !canBookSlot(slot.date, slot.time)) {
+    showToast('⏱', 'Too Soon', bookingLeadRuleMessage(), 'warning');
     return;
   }
 
@@ -1202,7 +1356,7 @@ function openCancelModal(slotId) {
   cancelSlotId = slotId;
   const s = slots.find(x => x.id === slotId);
   if (!s) return;
-  document.getElementById('cancelSlotInfo').textContent = `${thaiDate(s.date)} at ${s.time}`;
+  document.getElementById('cancelSlotInfo').textContent = formatSlotWhen(s.date, s.time);
   document.getElementById('cancelModal').classList.remove('hidden');
 }
 
@@ -1230,8 +1384,8 @@ async function confirmCancel() {
 // ══════════════════════════════════════════════════
 //  (end Cancel)
 // ══════════════════════════════════════════════════
-async function renderTrainerGrid() {
-  await loadSlotsFromSheets();
+async function renderTrainerGrid(skipLoad) {
+  if (!skipLoad) await loadSlotsFromSheets();
 
   const dates = getWeekDates(trainerWeek);
   setWeekLabel(dates, 'weekLabelT');
@@ -1246,7 +1400,7 @@ async function renderTrainerGrid() {
     const isToday = dateStr === today;
     col.innerHTML = `
       <div class="day-header ${isToday?'today':''}">
-        <div class="day-name">${DAYS_TH[d.getDay()]}</div>
+        <div class="day-name">${DAYS_SHORT[d.getDay()]}</div>
         <div class="day-date">${d.getDate()}</div>
       </div>
     `;
@@ -1273,7 +1427,7 @@ async function renderTrainerGrid() {
         const el = document.createElement('div');
         el.className = `slot ${cls}`;
         el.innerHTML = `
-          <div class="slot-time">${s.time}</div>
+          <div class="slot-time">${formatTime(s.time)}</div>
           <div class="slot-label" style="overflow:hidden;max-width:100%;text-overflow:ellipsis;white-space:nowrap">${label}</div>
         `;
         el.onclick = () => openTrainerSlotModal(s.id);
@@ -1295,7 +1449,7 @@ function openTrainerSlotModal(slotId) {
   const status = s.status;
   document.getElementById('tSlotInfo').innerHTML = `
     <p>📅 Date & Time</p>
-    <strong>${thaiDate(s.date)} at ${s.time}</strong>
+    <strong>${formatSlotWhen(s.date, s.time)}</strong>
   `;
 
   if (status === 'available') {
@@ -1397,7 +1551,7 @@ async function trainerDeleteSlot() {
 
 async function refreshAllTrainerViews() {
   await loadSlotsFromSheets();
-  renderTrainerGrid();
+  await renderTrainerGrid(true);
   renderBookingsList();
 }
 
@@ -1418,7 +1572,7 @@ async function addSlot() {
     document.getElementById('newSlotDate').value = '';
     document.getElementById('newSlotTime').value = '';
     await refreshAllTrainerViews();
-    showToast('✅', 'Slot Added', `${thaiDate(date)} at ${time}`, 'success');
+    showToast('✅', 'Slot Added', formatSlotWhen(date, time), 'success');
   } else {
     showToast('⚠️', 'Add Failed', result.message || 'Could not add slot.', 'warning');
   }
@@ -1447,8 +1601,8 @@ function renderBookingsList() {
     return `
       <div class="booking-card ${isPending ? 'booking-pending' : ''}">
         <div>
-          <div style="font-size:0.78rem;color:var(--muted);margin-bottom:0.2rem">${thaiDate(s.date)}</div>
-          <div class="bk-time">${s.time}</div>
+          <div style="font-size:0.78rem;color:var(--muted);margin-bottom:0.2rem">${formatDisplayDate(s.date)}</div>
+          <div class="bk-time">${formatTime(s.time)}</div>
         </div>
         <div style="flex:1;min-width:120px">
           <div class="bk-name">
