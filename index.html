@@ -712,7 +712,7 @@
       <div class="legend-item"><div class="legend-dot ld-mine"></div> Your Booking</div>
       <div class="legend-item"><div class="legend-dot ld-soon"></div> Within 6h (not bookable)</div>
     </div>
-    <p style="font-size:0.82rem;color:var(--muted);margin:-0.5rem 0 1rem;">Book at least <strong style="color:var(--text)">6 hours</strong> before your session. Times are <strong style="color:var(--text)">Asia/Bangkok (GMT+7)</strong>.</p>
+    <p style="font-size:0.82rem;color:var(--muted);margin:-0.5rem 0 1rem;">Book at least <strong style="color:var(--text)">6 hours</strong> before your session. Cancel your booking at least <strong style="color:var(--text)">3 hours</strong> before (e.g. 9:00 session → cancel by 6:00). Times are <strong style="color:var(--text)">Asia/Bangkok (GMT+7)</strong>.</p>
 
     <div class="schedule-grid" id="clientGrid"></div>
   </div>
@@ -827,7 +827,7 @@
       <p>📅 Session to Cancel</p>
       <strong id="cancelSlotInfo" style="color:var(--accent2)">—</strong>
     </div>
-    <p style="font-size:0.9rem;color:var(--muted)">Are you sure you want to cancel this session? This action cannot be undone.</p>
+    <p style="font-size:0.9rem;color:var(--muted)">Are you sure you want to cancel this session? You must cancel at least 3 hours before the session start time.</p>
     <div class="modal-actions" style="margin-top:1.2rem">
       <button class="btn btn-ghost" onclick="closeCancelModal()">No, Keep It</button>
       <button class="btn btn-danger" onclick="confirmCancel()">Cancel Booking</button>
@@ -873,6 +873,8 @@ const GOOGLE_CLIENT_ID = '408170423061-j89udohp7im1tunurp98u8e9nh2k4etg.apps.goo
 const TRAINER_ACTIONS = ['add_slot', 'delete_slot', 'approve_slot', 'verify_trainer'];
 const MIN_BOOKING_LEAD_HOURS = 6;
 const MIN_BOOKING_LEAD_MS = MIN_BOOKING_LEAD_HOURS * 60 * 60 * 1000;
+const MIN_CLIENT_CANCEL_LEAD_HOURS = 3;
+const MIN_CLIENT_CANCEL_LEAD_MS = MIN_CLIENT_CANCEL_LEAD_HOURS * 60 * 60 * 1000;
 /** Must match Code.gs APP_TIMEZONE */
 const APP_TIMEZONE = 'Asia/Bangkok';
 const APP_TZ_OFFSET = '+07:00';
@@ -1124,6 +1126,16 @@ function canBookSlot(dateStr, timeVal) {
 
 function bookingLeadRuleMessage() {
   return `Bookings must be made at least ${MIN_BOOKING_LEAD_HOURS} hours before the session.`;
+}
+
+function canClientCancelSlot(dateStr, timeVal) {
+  const start = slotStartTime(dateStr, timeVal);
+  if (!start) return false;
+  return start.getTime() - Date.now() >= MIN_CLIENT_CANCEL_LEAD_MS;
+}
+
+function clientCancelRuleMessage() {
+  return `Cancellations must be made at least ${MIN_CLIENT_CANCEL_LEAD_HOURS} hours before your session (Asia/Bangkok).`;
 }
 
 /** After adding a slot, pre-fill the next slot (+1 hour). */
@@ -1449,7 +1461,17 @@ async function renderClientGrid() {
 
         if (status === 'booked') {
           cls = isMine ? 'my-booking' : 'booked';
-          label = isMine ? '✓ Yours' : 'Full';
+          if (isMine) {
+            const canCancel = canClientCancelSlot(s.date, s.time);
+            label = canCancel ? '✓ Yours · Cancel' : `✓ Yours · < ${MIN_CLIENT_CANCEL_LEAD_HOURS}h`;
+            if (!canCancel) cls = 'too-soon';
+          } else {
+            label = 'Full';
+          }
+        } else if (status === 'pending' && isMine) {
+          const canCancel = canClientCancelSlot(s.date, s.time);
+          cls = canCancel ? 'my-booking' : 'too-soon';
+          label = canCancel ? '⏳ Yours · Cancel' : `⏳ Yours · < ${MIN_CLIENT_CANCEL_LEAD_HOURS}h`;
         } else if (status === 'pending') {
           cls = 'pending';
           label = withinLead ? `< ${MIN_BOOKING_LEAD_HOURS}h` : '⏳ Pending (Queue up)';
@@ -1477,8 +1499,12 @@ async function renderClientGrid() {
           el.onclick = () => showToast('⏱', 'Too Soon', bookingLeadRuleMessage(), 'warning');
         } else if (status === 'pending' && withinLead) {
           el.onclick = () => showToast('⏱', 'Too Soon', bookingLeadRuleMessage(), 'warning');
-        } else if (status === 'booked' && isMine) {
-          el.onclick = () => openCancelModal(s.id);
+        } else if ((status === 'booked' || status === 'pending') && isMine) {
+          if (canClientCancelSlot(s.date, s.time)) {
+            el.onclick = () => openCancelModal(s.id);
+          } else {
+            el.onclick = () => showToast('⏱', 'Cannot Cancel', clientCancelRuleMessage(), 'warning');
+          }
         }
 
         col.appendChild(el);
@@ -1548,6 +1574,10 @@ function openCancelModal(slotId) {
   cancelSlotId = slotId;
   const s = slots.find(x => x.id === slotId);
   if (!s) return;
+  if (!canClientCancelSlot(s.date, s.time)) {
+    showToast('⏱', 'Cannot Cancel', clientCancelRuleMessage(), 'warning');
+    return;
+  }
   document.getElementById('cancelSlotInfo').textContent = formatSlotWhen(s.date, s.time);
   document.getElementById('cancelModal').classList.remove('hidden');
 }
@@ -1560,6 +1590,11 @@ function closeCancelModal() {
 async function confirmCancel() {
   const id = cancelSlotId;
   if (!id) return;
+  const s = slots.find(x => x.id === id);
+  if (s && !canClientCancelSlot(s.date, s.time)) {
+    showToast('⏱', 'Cannot Cancel', clientCancelRuleMessage(), 'warning');
+    return;
+  }
   const result = await postAction('reject_slot', { id, clientToken: getClientToken() });
 
   if (result.success) {
