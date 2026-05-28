@@ -133,10 +133,12 @@
   }
 
   .hero-photo {
-    width: 168px;
-    height: 168px;
-    object-fit: cover;
-    object-position: center top;
+    display: block;
+    width: min(220px, 52vw);
+    height: auto;
+    max-height: min(420px, 58vh);
+    object-fit: contain;
+    object-position: center;
     border-radius: 16px;
     border: 3px solid var(--accent);
     box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
@@ -152,12 +154,12 @@
     .hero-inner {
       flex-direction: row;
       text-align: left;
-      align-items: center;
+      align-items: flex-start;
       gap: 2.5rem;
     }
     .hero-photo {
-      width: 220px;
-      height: 220px;
+      width: 260px;
+      max-height: min(480px, 72vh);
     }
   }
 
@@ -737,8 +739,8 @@
         class="hero-photo"
         src="icons/9672acf9-1f6d-4feb-96f2-22532283142d.jpg"
         alt="Trainer AA"
-        width="220"
-        height="220"
+        width="480"
+        height="640"
         loading="eager"
         decoding="async"
       >
