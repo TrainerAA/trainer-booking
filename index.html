@@ -1019,7 +1019,6 @@ const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz-OQYLIkAZZLQICqpN3
 const GOOGLE_CLIENT_ID = '408170423061-j89udohp7im1tunurp98u8e9nh2k4etg.apps.googleusercontent.com';
 
 const TRAINER_ACTIONS = ['add_slot', 'delete_slot', 'approve_slot', 'verify_trainer'];
-const SLOT_MUTATING_ACTIONS = ['book', 'add_slot', 'delete_slot', 'approve_slot', 'reject_slot'];
 const MIN_BOOKING_LEAD_HOURS = 6;
 const MIN_BOOKING_LEAD_MS = MIN_BOOKING_LEAD_HOURS * 60 * 60 * 1000;
 const MIN_CLIENT_CANCEL_LEAD_HOURS = 3;
@@ -1036,8 +1035,6 @@ let trainerCredential = null;
 let trainerPollTimer = null;
 let lastPendingKey = null;
 const TRAINER_POLL_MS = 30000;
-const SLOTS_CACHE_MS = 25000;
-let slotsCacheAt = 0;
 let slotsFetchPromise = null;
 let gsiLoadPromise = null;
 let currentWeek = 0;   // client week offset
@@ -1088,13 +1085,14 @@ function getClientToken() {
  */
 async function loadSlotsFromSheets(options = {}) {
   const { silent = false, force = false } = options;
-  const now = Date.now();
 
-  if (!force && slots.length && now - slotsCacheAt < SLOTS_CACHE_MS) {
-    return slots;
-  }
-
-  if (slotsFetchPromise && !force) {
+  if (force && slotsFetchPromise) {
+    try {
+      await slotsFetchPromise;
+    } catch {
+      // previous fetch failed — continue with a fresh request
+    }
+  } else if (slotsFetchPromise) {
     try {
       await slotsFetchPromise;
       return slots;
@@ -1103,32 +1101,31 @@ async function loadSlotsFromSheets(options = {}) {
     }
   }
 
+  const loadingMsg = silent ? null : 'Loading schedule...';
+
   slotsFetchPromise = (async () => {
-    try {
-      const clientToken = getClientToken();
-      const url = SCRIPT_URL + '?clientToken=' + encodeURIComponent(clientToken) + '&_=' + Date.now();
-      const loadingMsg = silent ? null : (slots.length ? null : 'Loading schedule...');
-      const data = await gasJson(url, { method: 'GET' }, loadingMsg);
-      slots = data.slots || [];
-      slotsCacheAt = Date.now();
-      hideApiError();
-      if (data.error) {
-        console.warn('API warning:', data.error);
-      }
-    } catch (err) {
-      console.error('Failed to load slots:', err);
-      if (!slots.length) {
-        slots = [];
-        showApiError(err.message || String(err));
-      }
-      throw err;
-    } finally {
-      slotsFetchPromise = null;
+    const clientToken = getClientToken();
+    const url = SCRIPT_URL + '?clientToken=' + encodeURIComponent(clientToken) + '&_=' + Date.now();
+    const data = await gasJson(url, { method: 'GET' }, loadingMsg);
+    slots = data.slots || [];
+    hideApiError();
+    if (data.error) {
+      console.warn('API warning:', data.error);
     }
+    return slots;
   })();
 
-  await slotsFetchPromise;
-  return slots;
+  try {
+    return await slotsFetchPromise;
+  } catch (err) {
+    console.error('Failed to load slots:', err);
+    if (!slots.length) {
+      showApiError(err.message || String(err));
+    }
+    throw err;
+  } finally {
+    slotsFetchPromise = null;
+  }
 }
 
 let loadingCount = 0;
@@ -1223,14 +1220,10 @@ async function postAction(action, payload = {}, options = {}) {
   const loadingMsg = silent ? null : (loadingLabels[action] || 'Saving...');
 
   try {
-    const result = await gasJson(SCRIPT_URL, {
+    return await gasJson(SCRIPT_URL, {
       method: 'POST',
       body: JSON.stringify(body)
     }, loadingMsg);
-    if (result && result.success !== false && SLOT_MUTATING_ACTIONS.includes(action)) {
-      slotsCacheAt = 0;
-    }
-    return result;
   } catch (err) {
     showApiError(err.message || String(err));
     return { success: false, message: err.toString() };
@@ -1657,7 +1650,11 @@ const DAYS_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 async function renderClientGrid(skipLoad) {
   if (!skipLoad) {
-    await loadSlotsFromSheets({ silent: slots.length > 0 });
+    try {
+      await loadSlotsFromSheets({ silent: false });
+    } catch {
+      // still render an empty week grid below
+    }
   }
 
   const dates = getWeekDates(currentWeek);
@@ -1843,7 +1840,13 @@ async function confirmCancel() {
 //  (end Cancel)
 // ══════════════════════════════════════════════════
 async function renderTrainerGrid(skipLoad) {
-  if (!skipLoad) await loadSlotsFromSheets({ silent: slots.length > 0 });
+  if (!skipLoad) {
+    try {
+      await loadSlotsFromSheets({ silent: false });
+    } catch {
+      // still render an empty week grid below
+    }
+  }
 
   const dates = getWeekDates(trainerWeek);
   setWeekLabel(dates, 'weekLabelT');
@@ -2008,7 +2011,11 @@ async function trainerDeleteSlot() {
 }
 
 async function refreshAllTrainerViews() {
-  await loadSlotsFromSheets({ silent: slots.length > 0, force: true });
+  try {
+    await loadSlotsFromSheets({ silent: slots.length > 0, force: true });
+  } catch {
+    // keep last known slots and refresh UI
+  }
   await renderTrainerGrid(true);
   renderBookingsList();
   updatePendingBadge();
@@ -2155,9 +2162,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   const timeEl = document.getElementById('newSlotTime');
   if (dateEl) dateEl.value = fmtDate(today);
   if (timeEl) timeEl.value = '09:00';
-
-  // Preload schedule quietly so the first paint can reuse cached data
-  loadSlotsFromSheets({ silent: true }).catch(() => {});
 
   const restored = await restoreTrainerSession();
   if (!restored) {
