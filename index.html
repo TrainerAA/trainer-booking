@@ -13,8 +13,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icons/icon-512.png">
-<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-<script src="https://accounts.google.com/gsi/client" async defer></script>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
   :root {
     --black: #0a0a0a;
@@ -37,7 +36,10 @@
     color: var(--text);
     font-family: 'Sarabun', sans-serif;
     min-height: 100vh;
+    min-height: 100dvh;
     overflow-x: hidden;
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
   }
 
   /* ─── NAV ─── */
@@ -45,7 +47,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 1.2rem 2rem;
+    padding: max(0.75rem, env(safe-area-inset-top)) max(1rem, env(safe-area-inset-right)) 0.75rem max(1rem, env(safe-area-inset-left));
     border-bottom: 1px solid var(--border);
     position: sticky;
     top: 0;
@@ -62,6 +64,8 @@
   }
 
   .logo span { color: var(--text); }
+
+  nav.hidden { display: none; }
 
   nav .nav-actions { display: flex; gap: 1rem; align-items: center; }
 
@@ -217,7 +221,17 @@
     animation: fadeUp 0.5s ease both;
   }
 
-  #scheduleSection { scroll-margin-top: 5.5rem; }
+  #scheduleSection { scroll-margin-top: calc(4.5rem + env(safe-area-inset-top)); }
+
+  .schedule-scroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    margin-bottom: 2rem;
+  }
+
+  .schedule-scroll .schedule-grid {
+    margin-bottom: 0;
+  }
 
   .section-header {
     display: flex;
@@ -450,6 +464,8 @@
   .form-group label { display: block; font-size: 0.85rem; font-weight: 600; color: var(--muted); margin-bottom: 0.4rem; }
   .form-group input, .form-group select, .form-group textarea {
     width: 100%;
+    max-width: 100%;
+    min-width: 0;
     background: var(--dark);
     border: 1px solid var(--border);
     border-radius: 8px;
@@ -459,6 +475,13 @@
     font-size: 0.95rem;
     outline: none;
     transition: border-color 0.2s;
+    box-sizing: border-box;
+  }
+  .form-group input[type="date"],
+  .form-group input[type="time"] {
+    display: block;
+    -webkit-appearance: none;
+    appearance: none;
   }
   .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
     border-color: var(--accent);
@@ -643,12 +666,21 @@
     padding: 1.3rem;
     margin-bottom: 2rem;
   }
+  .add-slot-grid .form-group { min-width: 0; }
+  .add-slot-grid .btn { white-space: nowrap; }
 
   /* ─── LOGIN ─── */
   .login-wrap {
     min-height: 100vh;
-    display: flex; align-items: center; justify-content: center;
-    padding: 2rem;
+    min-height: 100dvh;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding:
+      max(5.5rem, calc(env(safe-area-inset-top) + 3.5rem))
+      max(1.25rem, env(safe-area-inset-right))
+      max(2rem, env(safe-area-inset-bottom))
+      max(1.25rem, env(safe-area-inset-left));
   }
 
   .login-box {
@@ -670,6 +702,20 @@
   }
 
   .login-box p { color: var(--muted); font-size: 0.9rem; margin-bottom: 1.8rem; }
+
+  #googleSignInBtn {
+    display: flex;
+    justify-content: center;
+    margin: 1.25rem 0;
+    min-height: 44px;
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
+  }
+  #googleSignInBtn > div,
+  #googleSignInBtn iframe {
+    max-width: 100% !important;
+  }
 
   /* ─── LOADING ─── */
   .loading-spinner {
@@ -712,11 +758,51 @@
   .tab:not(.active):hover { border-color: var(--text); color: var(--text); }
 
   @media (max-width: 640px) {
-    .schedule-grid { grid-template-columns: repeat(4, 1fr); }
-    .day-col:nth-child(n+5) { display: none; }
-    .add-slot-grid { grid-template-columns: 1fr; }
-    nav { padding: 1rem; }
+    .schedule-grid {
+      grid-template-columns: repeat(7, minmax(0, 1fr));
+      gap: 0.25rem;
+      min-width: 0;
+    }
+    .day-name {
+      font-size: 0.58rem;
+      letter-spacing: 0;
+    }
+    .day-date {
+      font-size: 1.15rem;
+    }
+    .day-header {
+      padding: 0.35rem 0.1rem;
+    }
+    .slot {
+      min-height: 46px;
+      padding: 0.3rem 0.15rem;
+    }
+    .slot-time { font-size: 0.62rem; }
+    .slot-label { font-size: 0.54rem; line-height: 1.15; }
+    .section { padding: 1rem 0.65rem; }
+    .hero { padding: 2rem 1rem 2rem; }
+    .add-slot-grid {
+      grid-template-columns: 1fr 1fr;
+      grid-template-areas:
+        "date time"
+        "add add";
+      align-items: stretch;
+    }
+    .add-slot-grid .form-group:first-of-type { grid-area: date; }
+    .add-slot-grid .form-group:last-of-type { grid-area: time; }
+    .add-slot-grid > .btn { grid-area: add; width: 100%; margin-top: 0.2rem; }
+    nav { padding-left: max(0.75rem, env(safe-area-inset-left)); padding-right: max(0.75rem, env(safe-area-inset-right)); }
+    nav .nav-actions { gap: 0.45rem; }
+    nav .btn { padding: 0.45rem 0.65rem; font-size: 0.78rem; }
+    .logo { font-size: 1.45rem; }
+    .trainer-header {
+      flex-wrap: wrap;
+      padding: max(0.55rem, env(safe-area-inset-top)) 0.75rem 0.55rem;
+      gap: 0.45rem;
+      font-size: 0.72rem;
+    }
     .booking-card .bk-actions { width: 100%; justify-content: flex-end; }
+    .week-label { font-size: 0.82rem; }
   }
 </style>
 </head>
@@ -772,7 +858,9 @@
     </div>
     <p style="font-size:0.82rem;color:var(--muted);margin:-0.5rem 0 1rem;">Book at least <strong style="color:var(--text)">6 hours</strong> before your session. Cancel your booking at least <strong style="color:var(--text)">3 hours</strong> before (e.g. 9:00 session → cancel by 6:00). Times are <strong style="color:var(--text)">Asia/Bangkok (GMT+7)</strong>.</p>
 
-    <div class="schedule-grid" id="clientGrid"></div>
+    <div class="schedule-scroll">
+      <div class="schedule-grid" id="clientGrid"></div>
+    </div>
   </div>
 </div>
 
@@ -821,7 +909,9 @@
         </div>
       </div>
 
-      <div class="schedule-grid" id="trainerGrid"></div>
+      <div class="schedule-scroll">
+        <div class="schedule-grid" id="trainerGrid"></div>
+      </div>
     </div>
 
     <!-- BOOKINGS TAB -->
@@ -841,7 +931,7 @@
       <div style="font-size:3rem;margin-bottom:1rem;">🏋️</div>
       <h2>TRAINER LOGIN</h2>
       <p>Sign in with your authorized Google account to manage schedule and bookings.</p>
-      <div id="googleSignInBtn" style="display:flex;justify-content:center;margin:1.25rem 0;min-height:44px;"></div>
+      <div id="googleSignInBtn"></div>
       <p id="googleSignInHint" style="font-size:0.78rem;color:var(--accent2);display:none;">Set GOOGLE_CLIENT_ID in index.html and your email in Code.gs first.</p>
       <button class="btn btn-ghost" style="width:100%;padding:0.7rem;font-size:0.9rem;margin-top:0.8rem;" onclick="showClientBooking()">← Back</button>
       <p style="margin-top:1.2rem;font-size:0.78rem;color:var(--muted)">Only Google accounts allowed in the backend can sign in.</p>
@@ -929,6 +1019,7 @@ const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz-OQYLIkAZZLQICqpN3
 const GOOGLE_CLIENT_ID = '408170423061-j89udohp7im1tunurp98u8e9nh2k4etg.apps.googleusercontent.com';
 
 const TRAINER_ACTIONS = ['add_slot', 'delete_slot', 'approve_slot', 'verify_trainer'];
+const SLOT_MUTATING_ACTIONS = ['book', 'add_slot', 'delete_slot', 'approve_slot', 'reject_slot'];
 const MIN_BOOKING_LEAD_HOURS = 6;
 const MIN_BOOKING_LEAD_MS = MIN_BOOKING_LEAD_HOURS * 60 * 60 * 1000;
 const MIN_CLIENT_CANCEL_LEAD_HOURS = 3;
@@ -945,6 +1036,10 @@ let trainerCredential = null;
 let trainerPollTimer = null;
 let lastPendingKey = null;
 const TRAINER_POLL_MS = 30000;
+const SLOTS_CACHE_MS = 25000;
+let slotsCacheAt = 0;
+let slotsFetchPromise = null;
+let gsiLoadPromise = null;
 let currentWeek = 0;   // client week offset
 let trainerWeek = 0;   // trainer week offset
 let selectedSlotId = null;
@@ -991,21 +1086,48 @@ function getClientToken() {
  * Fetch all slots from Google Sheets via the Apps Script Web App.
  * Sends the client token so the backend can mark slots as is_mine.
  */
-async function loadSlotsFromSheets() {
-  try {
-    const clientToken = getClientToken();
-    const url = SCRIPT_URL + '?clientToken=' + encodeURIComponent(clientToken);
-    const data = await gasJson(url, { method: 'GET' }, 'Loading schedule...');
-    slots = data.slots || [];
-    hideApiError();
-    if (data.error) {
-      console.warn('API warning:', data.error);
-    }
-  } catch (err) {
-    console.error('Failed to load slots:', err);
-    slots = [];
-    showApiError(err.message || String(err));
+async function loadSlotsFromSheets(options = {}) {
+  const { silent = false, force = false } = options;
+  const now = Date.now();
+
+  if (!force && slots.length && now - slotsCacheAt < SLOTS_CACHE_MS) {
+    return slots;
   }
+
+  if (slotsFetchPromise && !force) {
+    try {
+      await slotsFetchPromise;
+      return slots;
+    } catch {
+      // fall through and retry
+    }
+  }
+
+  slotsFetchPromise = (async () => {
+    try {
+      const clientToken = getClientToken();
+      const url = SCRIPT_URL + '?clientToken=' + encodeURIComponent(clientToken) + '&_=' + Date.now();
+      const loadingMsg = silent ? null : (slots.length ? null : 'Loading schedule...');
+      const data = await gasJson(url, { method: 'GET' }, loadingMsg);
+      slots = data.slots || [];
+      slotsCacheAt = Date.now();
+      hideApiError();
+      if (data.error) {
+        console.warn('API warning:', data.error);
+      }
+    } catch (err) {
+      console.error('Failed to load slots:', err);
+      if (!slots.length) {
+        slots = [];
+        showApiError(err.message || String(err));
+      }
+      throw err;
+    } finally {
+      slotsFetchPromise = null;
+    }
+  })();
+
+  await slotsFetchPromise;
   return slots;
 }
 
@@ -1028,8 +1150,9 @@ function hideLoading() {
 }
 
 /** Fetch JSON from Google Apps Script (avoids CORS preflight issues). */
-async function gasJson(url, options = {}, loadingMessage) {
-  showLoading(loadingMessage || 'Loading...');
+async function gasJson(url, options = {}, loadingMessage = 'Loading...') {
+  const showOverlay = loadingMessage !== null;
+  if (showOverlay) showLoading(loadingMessage || 'Loading...');
   try {
     const resp = await fetch(url, {
       ...options,
@@ -1047,7 +1170,7 @@ async function gasJson(url, options = {}, loadingMessage) {
       throw new Error('API returned non-JSON. Check SCRIPT_URL and Web App deploy.');
     }
   } finally {
-    hideLoading();
+    if (showOverlay) hideLoading();
   }
 }
 
@@ -1074,7 +1197,7 @@ function hideApiError() {
  * @param {object} payload - Additional fields to send
  * @returns {Promise<{success: boolean, message?: string}>}
  */
-async function postAction(action, payload = {}) {
+async function postAction(action, payload = {}, options = {}) {
   const body = { action, ...payload };
   const needsTrainer =
     TRAINER_ACTIONS.includes(action) ||
@@ -1096,11 +1219,18 @@ async function postAction(action, payload = {}) {
     verify_trainer: 'Verifying access...'
   };
 
+  const silent = options.silent === true;
+  const loadingMsg = silent ? null : (loadingLabels[action] || 'Saving...');
+
   try {
-    return await gasJson(SCRIPT_URL, {
+    const result = await gasJson(SCRIPT_URL, {
       method: 'POST',
       body: JSON.stringify(body)
-    }, loadingLabels[action] || 'Saving...');
+    }, loadingMsg);
+    if (result && result.success !== false && SLOT_MUTATING_ACTIONS.includes(action)) {
+      slotsCacheAt = 0;
+    }
+    return result;
   } catch (err) {
     showApiError(err.message || String(err));
     return { success: false, message: err.toString() };
@@ -1225,6 +1355,8 @@ function setNextSlotInputs(dateStr, timeStr) {
 function showView(id) {
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   document.getElementById(id).classList.add('active');
+  const nav = document.getElementById('mainNav');
+  if (nav) nav.classList.toggle('hidden', id === 'trainerLoginView');
 }
 
 async function showClientBooking() {
@@ -1289,7 +1421,7 @@ async function trainerPollTick() {
   if (!isTrainer || !trainerCredential) return;
   const prevKey = lastPendingKey;
   const prevCount = prevKey ? prevKey.split(',').filter(Boolean).length : 0;
-  await loadSlotsFromSheets();
+  await loadSlotsFromSheets({ silent: true, force: true });
   const nextKey = pendingSlotsKey();
   const nextCount = getPendingSlots().length;
 
@@ -1318,7 +1450,7 @@ async function enterTrainerMode(options = {}) {
     return false;
   }
 
-  const result = await postAction('verify_trainer', {});
+  const result = await postAction('verify_trainer', {}, { silent: true });
   if (!result.success) {
     clearTrainerSession();
     if (!options.quiet) {
@@ -1365,7 +1497,36 @@ async function trainerRefresh() {
   showToast('↻', 'Refreshed', 'Schedule and bookings are up to date.', 'info');
 }
 
-function initGoogleSignIn() {
+function loadGoogleSignInScript() {
+  if (window.google && google.accounts && google.accounts.id) {
+    return Promise.resolve();
+  }
+  if (gsiLoadPromise) return gsiLoadPromise;
+
+  gsiLoadPromise = new Promise((resolve, reject) => {
+    const existing = document.querySelector('script[data-gsi="1"]');
+    if (existing) {
+      existing.addEventListener('load', () => resolve(), { once: true });
+      existing.addEventListener('error', () => reject(new Error('Google Sign-In failed to load')), { once: true });
+      return;
+    }
+    const script = document.createElement('script');
+    script.src = 'https://accounts.google.com/gsi/client';
+    script.async = true;
+    script.defer = true;
+    script.dataset.gsi = '1';
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error('Google Sign-In failed to load'));
+    document.head.appendChild(script);
+  }).catch((err) => {
+    gsiLoadPromise = null;
+    throw err;
+  });
+
+  return gsiLoadPromise;
+}
+
+async function initGoogleSignIn() {
   const btnEl = document.getElementById('googleSignInBtn');
   const hintEl = document.getElementById('googleSignInHint');
   if (!btnEl) return;
@@ -1376,8 +1537,17 @@ function initGoogleSignIn() {
   }
   if (hintEl) hintEl.style.display = 'none';
 
+  btnEl.innerHTML = '<p style="font-size:0.85rem;color:var(--muted);margin:0;">Loading sign-in…</p>';
+
+  try {
+    await loadGoogleSignInScript();
+  } catch {
+    btnEl.innerHTML = '<p style="font-size:0.85rem;color:var(--accent2);margin:0;">Could not load Google Sign-In. Check your connection.</p>';
+    return;
+  }
+
   if (!window.google || !google.accounts || !google.accounts.id) {
-    setTimeout(initGoogleSignIn, 300);
+    btnEl.innerHTML = '<p style="font-size:0.85rem;color:var(--accent2);margin:0;">Google Sign-In unavailable.</p>';
     return;
   }
 
@@ -1387,10 +1557,11 @@ function initGoogleSignIn() {
     auto_select: false
   });
   btnEl.innerHTML = '';
+  const btnWidth = Math.min(300, Math.max(240, btnEl.clientWidth || 280));
   google.accounts.id.renderButton(btnEl, {
     theme: 'filled_black',
     size: 'large',
-    width: 300,
+    width: btnWidth,
     text: 'signin_with',
     shape: 'rectangular'
   });
@@ -1474,18 +1645,20 @@ function setWeekLabel(dates, elId) {
   document.getElementById(elId).textContent = `${s} – ${e}`;
 }
 
-function prevWeek() { currentWeek--; renderClientGrid(); }
-function nextWeek() { currentWeek++; renderClientGrid(); }
-function prevWeekT() { trainerWeek--; renderTrainerGrid(); }
-function nextWeekT() { trainerWeek++; renderTrainerGrid(); }
+function prevWeek() { currentWeek--; renderClientGrid(true); }
+function nextWeek() { currentWeek++; renderClientGrid(true); }
+function prevWeekT() { trainerWeek--; renderTrainerGrid(true); }
+function nextWeekT() { trainerWeek++; renderTrainerGrid(true); }
 
 // ══════════════════════════════════════════════════
 //  CLIENT GRID
 // ══════════════════════════════════════════════════
 const DAYS_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-async function renderClientGrid() {
-  await loadSlotsFromSheets();
+async function renderClientGrid(skipLoad) {
+  if (!skipLoad) {
+    await loadSlotsFromSheets({ silent: slots.length > 0 });
+  }
 
   const dates = getWeekDates(currentWeek);
   setWeekLabel(dates, 'weekLabel');
@@ -1670,7 +1843,7 @@ async function confirmCancel() {
 //  (end Cancel)
 // ══════════════════════════════════════════════════
 async function renderTrainerGrid(skipLoad) {
-  if (!skipLoad) await loadSlotsFromSheets();
+  if (!skipLoad) await loadSlotsFromSheets({ silent: slots.length > 0 });
 
   const dates = getWeekDates(trainerWeek);
   setWeekLabel(dates, 'weekLabelT');
@@ -1835,7 +2008,7 @@ async function trainerDeleteSlot() {
 }
 
 async function refreshAllTrainerViews() {
-  await loadSlotsFromSheets();
+  await loadSlotsFromSheets({ silent: slots.length > 0, force: true });
   await renderTrainerGrid(true);
   renderBookingsList();
   updatePendingBadge();
@@ -1982,6 +2155,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   const timeEl = document.getElementById('newSlotTime');
   if (dateEl) dateEl.value = fmtDate(today);
   if (timeEl) timeEl.value = '09:00';
+
+  // Preload schedule quietly so the first paint can reuse cached data
+  loadSlotsFromSheets({ silent: true }).catch(() => {});
 
   const restored = await restoreTrainerSession();
   if (!restored) {
